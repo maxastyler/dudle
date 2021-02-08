@@ -24,8 +24,10 @@ defmodule Dudle.Game do
   @enforce_keys [:players]
   defstruct players: nil, rounds: []
 
+  @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
+
   @spec new_round(t(), [description()]) :: {:ok, t()} | {:error, String.t()}
-  def new_round(%Dudle.Game{rounds: rounds} = game, possible_prompts) do
+  def new_round(%Dudle.Game{rounds: rounds} = game, possible_prompts \\ @prompts) do
     if length(possible_prompts) < length(game.players) do
       {:error, "Less prompts than there are players"}
     else
