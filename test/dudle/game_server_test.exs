@@ -43,6 +43,39 @@ defmodule Dudle.GameServerTest do
     assert {:error, _} = GameServer.start_game(@server_name)
     GameServer.add_player(@server_name, "bob")
     assert {:ok, _} = GameServer.start_game(@server_name)
-    assert {:in_game, _} = GameServer.state(@server_name)
+    assert {:in_game, %{game: %Dudle.Game{}, submitted: %{}}} = GameServer.state(@server_name)
+  end
+
+  test "submitting turns" do
+    GameServer.add_player(@server_name, "alice")
+    GameServer.add_player(@server_name, "bob")
+    GameServer.start_game(@server_name)
+
+    GameServer.submit_turn(@server_name, "alice", 2)
+    GameServer.submit_turn(@server_name, "bob", 3)
+
+    assert {:in_game,
+            %{
+              game: %Dudle.Game{
+                rounds: [
+                  %{prompts: %{"alice" => {_, [{"alice", 2}]}, "bob" => {_, [{"bob", 3}]}}} | _
+                ]
+              },
+              submitted: %{}
+            }} = GameServer.state(@server_name)
+  end
+
+  test "Getting prompt" do
+    GameServer.add_player(@server_name, "alice")
+    GameServer.add_player(@server_name, "bob")
+    GameServer.start_game(@server_name)
+
+    # assert GameServer.state(@server_name) == 2
+    assert {:ok, _} = GameServer.get_prompt(@server_name, "bob")
+
+    GameServer.submit_turn(@server_name, "alice", 2)
+    GameServer.submit_turn(@server_name, "bob", 3)
+    assert GameServer.get_prompt(@server_name, "alice") == {:ok, 3}
+    assert GameServer.get_prompt(@server_name, "bob") == {:ok, 2}
   end
 end
