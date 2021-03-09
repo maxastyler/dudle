@@ -10,10 +10,11 @@ defmodule Dudle.Game do
 
   @type player :: String.t()
   @type description :: String.t()
+  @type drawing :: any()
 
   @type round :: %{
           next_players: %{player() => player()},
-          prompts: %{player() => {String.t(), [{player(), description | any()}]}}
+          prompts: %{player() => {String.t(), [{player(), description() | drawing()}]}}
         }
 
   @type t() :: %__MODULE__{
