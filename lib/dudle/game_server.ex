@@ -1,5 +1,14 @@
 defmodule Dudle.GameServer do
-  use GenServer
+  @moduledoc """
+  This module defines a server which runs a single game.
+  It runs on a state machine
+
+  The different states of the machine are:
+  :lobby - waiting in the lobby, we can add more players at this point
+  :playing 
+  
+  """
+  use GenStateMachine
 
   alias Dudle.Game
   alias DudleWeb.Endpoint
@@ -7,11 +16,11 @@ defmodule Dudle.GameServer do
 
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
-    GenServer.start_link(__MODULE__, {:lobby, data}, opts)
+    GenStateMachine.start_link(__MODULE__, {:lobby, data}, opts)
   end
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init({state, data}), do: {:ok, state, data}
 
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
@@ -19,7 +28,7 @@ defmodule Dudle.GameServer do
   We either start a new turn (if the prompts haven't been filled for every player yet) or
   a new round (if they have)
   """
-  defp finish_current_turn(state) do
+  defp finish_current_turn(data) do
     num_players = get_in(state, [:game, key(:players)]) |> length()
 
     new_state =
