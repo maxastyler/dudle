@@ -20,6 +20,7 @@ defmodule Dudle.MixProject do
   def application do
     [
       mod: {Dudle.Application, []},
+      applications: [:gen_state_machine],
       extra_applications: [:logger, :runtime_tools]
     ]
   end
@@ -46,7 +47,8 @@ defmodule Dudle.MixProject do
       {:telemetry_poller, "~> 0.4"},
       {:gettext, "~> 0.11"},
       {:jason, "~> 1.0"},
-      {:plug_cowboy, "~> 2.0"}
+      {:plug_cowboy, "~> 2.0"},
+      {:gen_state_machine, "~> 3.0"}
     ]
   end
 
