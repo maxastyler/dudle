@@ -1,5 +1,10 @@
 defmodule Dudle.GameServer do
   @moduledoc """
+
+  TODO::: Refactor this into two separate parts: a game state (server state or whatever) and a presentation state
+  The game state should contain stuff to do specifically with the game (submissions, etc...)
+  The presentation state should contain stuff to do with presenting this data to the users (pubsub, reviewing submissions, voting etc...)
+
   This module defines a server which runs a single game.
   It runs on a state machine
 
