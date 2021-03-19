@@ -6,13 +6,29 @@ defmodule Dudle.GameServer do
   The different states of the machine are:
   :lobby - waiting in the lobby, we can add more players at this point
   :playing 
-  
+
+  The data in the state machine at all points should carry the data
+  %{game: %Game, round: Round, submissions: [submission], }
+
+  Different states in the game:
+
+  :lobby
+
+  {:playing, :creating}
+  {:playing, {:reviewing, :revealing}}
+  {:playing, {:reviewing, :voting}}
+
+  :end
+
+
   """
-  use GenStateMachine
+  use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
 
   alias Dudle.Game
   alias DudleWeb.Endpoint
   import Access, only: [key: 1, key: 2, at: 1]
+
+  @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
 
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
@@ -25,34 +41,6 @@ defmodule Dudle.GameServer do
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
   @doc """
-  We either start a new turn (if the prompts haven't been filled for every player yet) or
-  a new round (if they have)
-  """
-  defp finish_current_turn(data) do
-    num_players = get_in(state, [:game, key(:players)]) |> length()
-
-    new_state =
-      state
-      |> update_in(
-        [:game, key(:rounds), at(0), :prompts],
-        &for {p, {o, l}} <- &1, into: %{} do
-          {p, {o, [{p, state.submitted[p]} | l]}}
-        end
-      )
-      |> put_in([:submitted], %{})
-
-    finished_round =
-      get_in(new_state, [:game, key(:rounds), at(0), :prompts])
-      |> Enum.all?(fn {_, {_, l}} -> length(l) == num_players end)
-
-    if finished_round do
-      update_in(new_state, [:game], &Game.new_round(&1))
-    else
-      new_state
-    end
-  end
-
-  @doc """
   Start a game server with a given name
   """
   def start_server(name) do
@@ -62,110 +50,144 @@ defmodule Dudle.GameServer do
     )
   end
 
-  @impl true
-  def handle_call(:start_game, _from, {:lobby, data}) do
-    if MapSet.size(data.players) > 1 do
-      {:ok, game} =
-        %Game{players: MapSet.to_list(data.players) |> Enum.sort()} |> Game.new_round()
-      Endpoint.broadcast()
-      {:reply, {:ok, nil}, {:in_game, %{game: game, submitted: %{}}}}
+  @doc """
+  Create the game state required when a new game is created
+  """
+  def new_game_state(players, prompts \\ @prompts) do
+    with {:ok, %Game{rounds: [r | rs]} = game} <-
+           Game.new_round(%Game{players: MapSet.to_list(players)}, prompts) do
+      {:ok,
+       %{submissions: empty_submissions_map(players), round: r, game: %Game{game | rounds: rs}}}
     else
-      {:reply, {:error, "Can't start game with less than 2 players"}, {:lobby, data}}
+      e -> e
     end
   end
 
-  def handle_call({:add_player, player}, _from, {:lobby, data}) do
-    {:reply, {:ok, nil}, {:lobby, update_in(data, [:players], &MapSet.put(&1, player))}}
-  end
+  @doc """
+  Create an empty submissions map from the players in the game
+  """
+  def empty_submissions_map(players), do: Map.new(players, &{&1, nil})
 
-  def handle_call({:remove_player, player}, _from, {:lobby, data}) do
-    {:reply, {:ok, nil}, {:lobby, update_in(data, [:players], &MapSet.delete(&1, player))}}
-  end
+  @doc """
+  Add the new submissions to the round.
+  Returns a tuple of {new_state, new_round}
+  If all submissions have been completed for the round, move on to the reviewing state.
+  """
+  def add_submissions_to_round(
+        %{next_players: next_players, prompts: prompts} = round,
+        new_submissions
+      ) do
+    num_players = map_size(next_players)
 
-  def handle_call(:get_state, _from, state) do
-    {:reply, state, state}
-  end
-
-  def handle_call({:submit_turn, player, turn_data}, _from, {:in_game, data}) do
-    new_state = update_in(data, [:submitted], &Map.put(&1, player, turn_data))
-
-    {:reply, :ok,
-     {:in_game,
-      if map_size(new_state.submitted) == length(new_state.game.players) do
-        finish_current_turn(new_state)
-      else
-        new_state
-      end}}
-  end
-
-  @impl true
-  def handle_call({:get_prompt, player}, _from, {:in_game, data}) do
-    # find the previous player who maps
-    prev_player =
-      get_in(data, [:game, key(:rounds), at(0), :next_players])
-      |> Enum.find(fn {_, val} -> val == player end)
-      |> elem(0)
-
-    prompts = get_in(data, [:game, key(:rounds), at(0), :prompts])
-
-    description =
-      with {_, description} <-
-             Map.values(prompts)
-             |> Enum.map(
-               &case elem(&1, 1) |> List.first(),
-                 do:
-                   (
-                     nil -> {nil, nil}
-                     x -> x
-                   )
-             )
-             |> Enum.find(fn {p, _} -> p == prev_player end) do
-        description
-      else
-        _ -> prompts[player] |> elem(0)
+    {new_size, new_prompts} =
+      for {player, submission} <- new_submissions, reduce: {num_players, prompts} do
+        {smallest_size, p} ->
+          get_and_update_in(
+            p,
+            [player, Access.elem(1)],
+            &{min(smallest_size, length(&1) + 1), [{player, submission} | &1]}
+          )
       end
 
-    {:reply, {:ok, description}, {:in_game, data}}
+    {{:playing, if(new_size >= num_players, do: {:reviewing, :revealing}, else: :creating)},
+     %{round | prompts: new_prompts}}
   end
 
-  def call_name(name, call), do: GenServer.call(via(name), call)
-
-  # client functions
-
-  @doc """
-  Start a game on a server that's in a lobby. 
-  Errors if there's less than two players in the game
-  """
-  def start_game(name), do: call_name(name, :start_game)
-
-  @doc """
-  Add a player to the current game. Only works if still in the lobby state.
-  """
-  def add_player(name, player), do: call_name(name, {:add_player, player})
-
-  @doc """
-  Remove a player from the current game. Only works if still in the lobby state.
-  """
-  def remove_player(name, player), do: call_name(name, {:remove_player, player})
-
-  @doc """
-  Get the state of the given server
-  """
-  def state(name), do: :sys.get_state(via(name))
-
-  @doc """
-  Submit either a description or an image for the current turn
-  """
-  @spec submit_turn(String.t(), Game.player(), any()) :: :ok | {:error, String.t()}
-  def submit_turn(name, player, turn_data) do
-    call_name(name, {:submit_turn, player, turn_data})
+  def handle_event({:call, from}, :get_full_state, state, data) do
+    {:keep_state_and_data, {:reply, from, {state, data}}}
   end
 
-  @spec get_prompt(String.t(), Game.player()) :: {:ok, any()} | {:error, String.t()}
-  @doc """
-  Get the current prompt for the given player
-  """
-  def get_prompt(name, player) do
-    call_name(name, {:get_prompt, player})
+  ##### :lobby events
+
+  @impl true
+  def handle_event({:call, from}, {:add_player, player}, :lobby, data) do
+    new_data = update_in(data, [:players], &MapSet.put(&1, player))
+    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
   end
+
+  def handle_event({:call, from}, {:remove_player, player}, :lobby, data) do
+    new_data = update_in(data, [:players], &MapSet.delete(&1, player))
+    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
+  end
+
+  def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
+    case MapSet.size(players) do
+      0 ->
+        {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}}}
+
+      _ ->
+        with {:ok, new_data} <- new_game_state(players) do
+          {:next_state, {:playing, :creating}, Map.merge(data, new_data), {:reply, from, :ok}}
+        else
+          {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}}}
+        end
+    end
+  end
+
+  ##### {:playing, :creating} events
+
+  def handle_event(
+        {:call, from},
+        {:submit, player, submission},
+        {:playing, :creating},
+        %{submissions: submissions, round: round, game: %Game{players: players}} = data
+      ) do
+    new_submissions = Map.put(submissions, player, submission)
+    # if all submissions are in:
+    if Map.values(new_submissions) |> Enum.all?() do
+      {state, round} = add_submissions_to_round(round, new_submissions)
+      new_data = %{data | submissions: empty_submissions_map(players), round: round}
+
+      case state do
+        {_, :creating} ->
+          {:keep_state, new_data, {:reply, from, :ok}}
+
+        _ ->
+          {:new_state_and_data, {:playing, {:reviewing, :voting}}, new_data, {:reply, from, :ok}}
+      end
+    else
+      {:keep_state, %{data | submissions: new_submissions}, {:reply, from, :ok}}
+    end
+  end
+
+  ##### {:playing, {:reviewing, :revealing}} events
+
+  # def handle_event(
+  #       {:call, from},
+  #       {:reveal, player},
+  #       {:playing, {:reviewing, :revealing}},
+  #       data
+  #     ) do
+  #   {:new_state_and_data, {:playing, {:reviewing, :voting}}, %{data, }}
+  # end
+
+  ##### {:playing, {:reviewing, :voting}} events
+
+  # def handle_event(:enter, _old_state, {:playing, {:reviewing, :voting}}, data) do
+  # end
+
+  def handle_event(
+        {:call, from},
+        {:vote, from_player, for_player, vote_type},
+        {:playing, {:reviewing, :voting}},
+        %{round: round, game: %Game{players: players}} = data
+      ) do
+    {votes_count, new_data} =
+      Access.get_and_update(data, :votes, fn
+        nil ->
+          {1, %{from_player => {vote_type, for_player}}}
+
+        votes ->
+          new_votes = Map.put(votes, from_player, {vote_type, for_player})
+          {map_size(new_votes), new_votes}
+      end)
+
+    if votes_count >= length(players) do
+      round
+    else
+      {:keep_data, {:playing, :creating}, {:reply, from, :ok}}
+    end
+  end
+
+  ##### :end events
 end

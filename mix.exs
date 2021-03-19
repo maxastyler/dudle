@@ -20,7 +20,6 @@ defmodule Dudle.MixProject do
   def application do
     [
       mod: {Dudle.Application, []},
-      applications: [:gen_state_machine],
       extra_applications: [:logger, :runtime_tools]
     ]
   end

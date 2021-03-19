@@ -11,10 +11,13 @@ defmodule Dudle.Game do
   @type player :: String.t()
   @type description :: String.t()
   @type drawing :: any()
+  @type prompt_map :: %{player() => {String.t(), [{player(), description() | drawing()}]}}
+  @type scores :: %{player() => {:correct | :favourite, player()}}
 
   @type round :: %{
           next_players: %{player() => player()},
-          prompts: %{player() => {String.t(), [{player(), description() | drawing()}]}}
+          prompts: prompt_map(),
+          scores: scores(),
         }
 
   @type t() :: %__MODULE__{
@@ -27,25 +30,30 @@ defmodule Dudle.Game do
 
   @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
 
-  @spec new_round(t(), [description()]) :: {:ok, t()} | {:error, String.t()}
-  def new_round(%Dudle.Game{rounds: rounds} = game, possible_prompts \\ @prompts) do
-    if length(possible_prompts) < length(game.players) do
+  @doc """
+  Try to make a new round
+  """
+  @spec new_round([player()], [description()]) :: {:ok, t()} | {:error, String.t()}
+  def new_round(players, possible_prompts \\ @prompts) do
+    if length(possible_prompts) < length(players) do
       {:error, "Less prompts than there are players"}
     else
-      next_round = %{
-        next_players: list_to_adjacency_map(game.players),
-        prompts:
-          for {p, d} <-
-                Enum.zip(
-                  game.players,
-                  Enum.take_random(possible_prompts, length(game.players))
-                ),
-              into: %{} do
-            {p, {d, []}}
-          end
+      round = %{
+        next_players: list_to_adjacency_map(players),
+        prompts: pick_prompts(players, possible_prompts)
       }
+      {:ok, round}
+    end
+  end
 
-      {:ok, %Dudle.Game{game | rounds: [next_round | rounds]}}
+  @doc """
+  Create the player->prompts map for the given set of prompts and players
+  """
+  @spec pick_prompts([player()], [String.t()]) :: prompt_map()
+  defp pick_prompts(players, prompts) do
+    for {player, prompt} <- Enum.zip(players, Enum.take_random(prompts, length(players))),
+        into: %{} do
+      {player, {prompt, []}}
     end
   end
 
