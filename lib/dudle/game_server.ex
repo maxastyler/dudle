@@ -27,7 +27,7 @@ defmodule Dudle.GameServer do
 
 
   """
-  use GenStateMachine, callback_mode: [:handle_event_function, :state_enter]
+  use GenServer
 
   alias Dudle.Game
   alias DudleWeb.Endpoint
@@ -37,11 +37,11 @@ defmodule Dudle.GameServer do
 
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
-    GenStateMachine.start_link(__MODULE__, {:lobby, data}, opts)
+    GenServer.start_link(__MODULE__, %{data | state: :lobby}, opts)
   end
 
   @impl true
-  def init({state, data}), do: {:ok, state, data}
+  def init(state), do: {:ok, state}
 
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 

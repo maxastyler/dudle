@@ -7,7 +7,7 @@ defmodule Dudle.GameClient do
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
   defp call_name(name, call_data) do
-    GenStateMachine.call(via(name), call_data)
+    GenServer.call(via(name), call_data)
   end
 
   @doc """
@@ -18,7 +18,7 @@ defmodule Dudle.GameClient do
   end
 
   @doc """
-  Get the full state of the game. Returns a tuple {state, data}
+  Get the full state of the game.
   """
   def get_full_state(name) do
     call_name(name, :get_full_state)
