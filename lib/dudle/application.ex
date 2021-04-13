@@ -16,6 +16,7 @@ defmodule Dudle.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Dudle.PubSub},
       # Start the Endpoint (http/https)
+      Dudle.Presence,
       DudleWeb.Endpoint
       # Start a worker by calling: Dudle.Worker.start_link(arg)
       # {Dudle.Worker, arg}

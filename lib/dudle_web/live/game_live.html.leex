@@ -1,0 +1,8 @@
+<%= if assigns[:prompt] do %>
+    <%= live_component @socket, DudleWeb.PromptComponent, id: "prompt", prompt: @prompt%>
+<% end %>
+<div>
+<%= for u <- @online do %>
+    <p><%= u %></p>
+<% end %>
+</div>

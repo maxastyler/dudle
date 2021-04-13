@@ -31,11 +31,16 @@ Hooks.SketchPad = {
 
         this.pad = new rs(sketch_el, {
             line: {
-                color: '#f44335',
-                size: 5
+                color: pen_colours[0],
+                size: pen_sizes[0]
             },
-            width: 500,
+            width: 100,
         });
+
+        this.send_function = () => {this.pushEvent("handle_sketch_data",
+                                                   {sketch_data: this.pad.toJSON()})};
+        this.send_image_function = () => {this.pushEvent("handle_image_data",
+                                                         {image_data: this.pad.canvas.toDataURL("image/png")})}
 
         let undo = document.createElement("button");
         undo.appendChild(document.createTextNode("undo"));
@@ -46,6 +51,11 @@ Hooks.SketchPad = {
         redo.appendChild(document.createTextNode("redo"));
         redo.addEventListener("click", () => {this.pad.redo()});
         control_div.appendChild(redo);
+
+        let send = document.createElement("button");
+        send.appendChild(document.createTextNode("send"));
+        send.addEventListener("click", () => {this.send_image_function()});
+        control_div.appendChild(send);
 
         for (const i in pen_sizes) {
             let button = document.createElement("button");
@@ -68,11 +78,12 @@ Hooks.SketchPad = {
 
         // this.el.style = "background-color:black";
 
-        this.handleEvent("send_data",
-                         (_) => {this.pushEvent("handle_sketch_data",
-                                                {sketch_data: this.pad.toJSON()})})
+        this.handleEvent("send_data", (_) => {this.send_function()});
         this.handleEvent("update_data",
-                         (data) => {this.pad.loadJSON(data)})
+                         ({data}) => {
+                             console.log(data);
+                             this.pad.loadJSON(data)})
+        this.handleEvent("send_image", (_) => {this.send_image_function()});
     }
 }
 
