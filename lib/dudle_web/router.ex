@@ -18,7 +18,7 @@ defmodule DudleWeb.Router do
     pipe_through :browser
 
     live "/", GameLive, :new
-    live "/:user", GameLive, :index
+    
   end
 
   # Other scopes may use custom stacks.

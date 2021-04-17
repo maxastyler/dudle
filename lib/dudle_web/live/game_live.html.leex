@@ -1,8 +1,16 @@
-<%= if assigns[:prompt] do %>
-    <%= live_component @socket, DudleWeb.PromptComponent, id: "prompt", prompt: @prompt%>
+<%= if connected?(@socket) do %>
+<%= cond do %>
+    <% assigns[:room] == nil or assigns[:name] == nil -> %>
+        <form phx-submit="enter_room">
+            <%= if assigns["room"] == nil do %>
+                <input type="text" name="room" placeholder="Enter room name" value="<%= assigns[:room] %>" />
+                <% end %>
+            <input type="text" name="name" placeholder="Enter player name" value="<%= assigns[:name] %>" />
+            <button type="submit">Go</button>
+        </form>
+        <% assigns[:name_taken] == true -> %>
+            <p>Name taken!</p>
+        <% :else ->  %>
+            <p>Playing the game</p>
 <% end %>
-<div>
-<%= for u <- @online do %>
-    <p><%= u %></p>
 <% end %>
-</div>
