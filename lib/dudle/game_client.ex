@@ -14,6 +14,7 @@ defmodule Dudle.GameClient do
   Add a player to the game. This function only works in the lobby.
   """
   def add_player(name, player) do
+    Dudle.GameServer.start_server(name)
     call_name(name, {:add_player, player})
   end
 
@@ -30,4 +31,13 @@ defmodule Dudle.GameClient do
   def start_game(name) do
     call_name(name, :start_game)
   end
+
+  def ensure_server_started(name) do
+    case Dudle.GameServer.start_server(name) do
+      {:ok, pid} -> {:ok, pid}
+      {:error, {:already_started, pid}} -> {:ok, pid}
+      _ -> {:error, "couldn't start server"}
+    end
+  end
+
 end

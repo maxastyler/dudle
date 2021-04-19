@@ -1,4 +1,7 @@
 <%= if connected?(@socket) do %>
+    <%= for p <- @players do %>
+        <p><%= p %></p>
+    <% end %>
 <%= cond do %>
     <% assigns[:room] == nil or assigns[:name] == nil -> %>
         <form phx-submit="enter_room">
@@ -12,5 +15,6 @@
             <p>Name taken!</p>
         <% :else ->  %>
             <p>Playing the game</p>
+            <button phx-click="start_game">start game</button>
 <% end %>
 <% end %>

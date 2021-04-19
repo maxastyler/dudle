@@ -27,7 +27,7 @@ defmodule Dudle.GameServer do
 
 
   """
-  use GenServer
+  use GenStateMachine
 
   alias Dudle.Game
   alias DudleWeb.Endpoint
@@ -37,11 +37,14 @@ defmodule Dudle.GameServer do
 
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
-    GenServer.start_link(__MODULE__, %{data | state: :lobby}, opts)
+    GenStateMachine.start_link(__MODULE__, data, opts)
   end
 
   @impl true
-  def init(state), do: {:ok, state}
+  def init(%{room: room} = data) do
+    DudleWeb.Endpoint.subscribe("presence:#{room}")
+    {:ok, :lobby, data}
+  end
 
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
@@ -51,7 +54,7 @@ defmodule Dudle.GameServer do
   def start_server(name) do
     DynamicSupervisor.start_child(
       Dudle.GameSupervisor,
-      {Dudle.GameServer, data: %{players: MapSet.new()}, name: via(name)}
+      {Dudle.GameServer, data: %{players: MapSet.new(), room: name}, name: via(name)}
     )
   end
 
@@ -60,7 +63,7 @@ defmodule Dudle.GameServer do
   """
   def new_game_state(players, prompts \\ @prompts) do
     with {:ok, %Game{rounds: [r | rs]} = game} <-
-           Game.new_round(%Game{players: MapSet.to_list(players)}, prompts) do
+           Game.new_round(MapSet.to_list(players), prompts) do
       {:ok,
        %{submissions: empty_submissions_map(players), round: r, game: %Game{game | rounds: rs}}}
     else
@@ -98,22 +101,7 @@ defmodule Dudle.GameServer do
      %{round | prompts: new_prompts}}
   end
 
-  def handle_event({:call, from}, :get_full_state, state, data) do
-    {:keep_state_and_data, {:reply, from, {state, data}}}
-  end
-
   ##### :lobby events
-
-  @impl true
-  def handle_event({:call, from}, {:add_player, player}, :lobby, data) do
-    new_data = update_in(data, [:players], &MapSet.put(&1, player))
-    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
-  end
-
-  def handle_event({:call, from}, {:remove_player, player}, :lobby, data) do
-    new_data = update_in(data, [:players], &MapSet.delete(&1, player))
-    {:keep_state, new_data, {:reply, from, {:ok, new_data}}}
-  end
 
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
     case MapSet.size(players) do
@@ -127,6 +115,20 @@ defmodule Dudle.GameServer do
           {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}}}
         end
     end
+  end
+
+  def handle_event(
+        :info,
+        %{event: "presence_diff"},
+        :lobby,
+        %{room: room} = data
+      ) do
+    {:keep_state,
+     %{
+       data
+       | players:
+           Dudle.Presence.list("presence:#{room}") |> Map.keys() |> Enum.sort() |> MapSet.new()
+     }}
   end
 
   ##### {:playing, :creating} events

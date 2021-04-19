@@ -2,6 +2,8 @@ defmodule DudleWeb.GameLive do
   use DudleWeb, :live_view
   alias Dudle.Presence
   alias Phoenix.LiveView.Socket
+  alias Dudle.GameClient
+  alias Dudle.GameServer
 
   @default_colour "#000000"
 
@@ -20,10 +22,6 @@ defmodule DudleWeb.GameLive do
     String.length(name) > 0
   end
 
-  defp untrack_previous_name(room_name, name) do
-    Presence.untrack(self(), "presence:#{room_name}", name)
-  end
-
   defp track_name(%Socket{assigns: %{name: name}} = socket) do
     Presence.track(self(), presence_topic(socket), name, %{})
   end
@@ -33,35 +31,13 @@ defmodule DudleWeb.GameLive do
     DudleWeb.Endpoint.subscribe(topic(socket))
   end
 
-  defp add_room_name(socket, nil), do: {:error, "room name nil"}
-  defp add_room_name(socket, room_name) do
-    cond do
-      not room_name_valid?(room_name) -> {:error, "room name invalid"}
-      socket.assigns["room"] == nil ->
-        DudleWeb.Endpoint.subscribe("presence:#{room_name}")
-        DudleWeb.Endpoint.subscribe("game:#{room_name}")
-        {:ok, assign(socket, "room", room_name)}
-      socket.assigns["room"] == room_name -> {:ok, socket}
-      :else -> {:error, "room name changed"}
-    end
-  end
-
-  # subscribe to the given room or redirect
-  defp subscribe_or_redirect(socket, room) do
-    socket
-  end
-
   defp presence_topic(%Socket{assigns: %{room: room}}), do: "presence:#{room}"
 
   defp topic(%Socket{assigns: %{room: room}}), do: "game:#{room}"
 
   # get the players in the room
   defp get_players(socket) do
-    Presence.list(presence_topic(socket)) |> Map.keys()
-  end
-
-  # try subscribing to the given room's broadcast, erroring if the given player is already subscribed
-  defp subscribe(player_name, socket) do
+    Presence.list(presence_topic(socket)) |> Map.keys() |> Enum.sort()
   end
 
   @impl true
@@ -69,6 +45,7 @@ defmodule DudleWeb.GameLive do
     if connected?(socket) do
       rv = room_name_valid?(params["room"])
       nv = name_valid?(params["name"])
+      if rv, do: GameClient.ensure_server_started(params["room"])
       socket = if rv, do: assign(socket, room: params["room"]), else: socket
       socket = if nv, do: assign(socket, name: params["name"]), else: socket
       socket = if rv and nv do
@@ -82,7 +59,9 @@ defmodule DudleWeb.GameLive do
       else
         socket
       end
-      IO.inspect(get_players(socket))
+
+      # if the room value is valid, get the players for the socket
+      socket = if rv, do: assign(socket, players: get_players(socket)), else: socket
       {:ok, socket}
     else
       {:ok, socket}
@@ -90,54 +69,15 @@ defmodule DudleWeb.GameLive do
     
   end
 
-  def handle_params(params, _session, socket) do
-    # cond do
-    #   room_name_valid?(params["room"]) and name_valid?(params["name"]) ->
-    #     {:noreply, assign(socket, room: params["room"], name: params["name"])}
-    #   :else -> {:noreply, socket}
-    # end
-    # with {:ok, socket} <- add_room_name(socket, params["room"]) do
-    #   with {:ok, socket} <- add_name(socket, params["name"]) do
-    #     IO.puts("name and room ok")
-    #     {:noreply, socket}
-    #   else
-    #     {:error, "name nil"} ->
-    #       IO.puts("The name was nil")
-    #       {:noreply, socket}
-    #     _ ->
-    #       IO.puts("THE NAME WASn'T NIL")
-    #       IO.inspect(params)
-    #     {:noreply, push_redirect(socket, to: Routes.game_path(socket, :new, room: params["room"]))}
-    #   end
-    # else
-    #   {:error, "room name invalid"} -> {:noreply, push_redirect(socket, to: Routes.game_path(socket, :new,
-    #                                          (if params["name"] != nil, do: [name: params["name"]], else: [])))}
-    #   _ -> {:noreply, socket}
-    # end
-    {:noreply, socket}
-  end
-
-
-  def handle_info(%{event: "presence_diff", payload: payload}, socket) do
-    IO.inspect("PRESENCE DIFF")
-    IO.inspect(payload)
-    {:noreply, socket}
+  @impl true
+  def handle_info(%{event: "presence_diff"}, socket) do
+    {:noreply, assign(socket, players: get_players(socket))}
   end
 
   @impl true
   def handle_event("enter_room", %{"room" => room, "name" => name}, socket) do
     {:noreply,
     push_redirect(socket, to: Routes.game_path(socket, :new, room: room, name: name))}
-  end
-
-  @impl true
-  def handle_event("change_name", %{"name" => name}, socket) do
-    params = case socket.assigns["room"] do
-      nil -> [name: name]
-      r -> [room: nil, name: name]
-    end
-    {:noreply,
-    push_redirect(socket, to: Routes.game_path(socket, :new, params))}
   end
 
   @impl true
@@ -150,6 +90,11 @@ defmodule DudleWeb.GameLive do
   end
 
   def handle_event("handle_text_data", data, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_event("start_game", _, socket) do
+    GameClient.start_game(socket.assigns.room)
     {:noreply, socket}
   end
 
