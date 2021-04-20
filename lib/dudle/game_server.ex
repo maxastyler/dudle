@@ -35,6 +35,11 @@ defmodule Dudle.GameServer do
 
   @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
 
+  defp broadcast_data(%{room: room} = data) do
+    DudleWeb.Endpoint.broadcast("game:#{room}", "data_update", data)
+    :ok
+  end
+
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
     GenStateMachine.start_link(__MODULE__, data, opts)
@@ -110,7 +115,9 @@ defmodule Dudle.GameServer do
 
       _ ->
         with {:ok, new_data} <- new_game_state(players) do
-          {:next_state, {:playing, :creating}, Map.merge(data, new_data), {:reply, from, :ok}}
+          new_data = Map.merge(data, new_data)
+          broadcast_data(new_data)
+          {:next_state, {:playing, :creating}, new_data, {:reply, from, :ok}}
         else
           {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}}}
         end
@@ -135,6 +142,7 @@ defmodule Dudle.GameServer do
   end
 
   def handle_event({:call, from}, {:get_state, name}, state, data) do
+    reply_data = []
     {:keep_state_and_data, {:reply, from, reply_data}}
   end
 
@@ -144,7 +152,7 @@ defmodule Dudle.GameServer do
         {:call, from},
         {:submit, player, submission},
         {:playing, :creating},
-        %{submissions: submissions, round: round, game: %Game{players: players}} = data
+        %{submissions: submissions, round: round, game: %Game{players: players}, room: room} = data
       ) do
     new_submissions = Map.put(submissions, player, submission)
     # if all submissions are in:

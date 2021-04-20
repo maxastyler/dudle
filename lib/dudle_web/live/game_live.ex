@@ -44,18 +44,16 @@ defmodule DudleWeb.GameLive do
     assign(socket, state: GameClient.get_state(socket.assigns.room, socket.assigns.name))
   end
 
-  @impl true
-  def mount(params, _session, socket) do
-    if connected?(socket) do
-      rv = room_name_valid?(params["room"])
-      nv = name_valid?(params["name"])
-      if rv, do: GameClient.ensure_server_started(params["room"])
-      socket = if rv, do: assign(socket, room: params["room"]), else: socket
-      socket = if nv, do: assign(socket, name: params["name"]), else: socket
+  defp join_room_with_name(room, name, socket) do
+      rv = room_name_valid?(room)
+      nv = name_valid?(name)
+      if rv, do: GameClient.ensure_server_started(room)
+      socket = if rv, do: assign(socket, room: room), else: socket
+      socket = if nv, do: assign(socket, name: name), else: socket
       socket = if rv and nv do
         subscribe_to_room(socket)
         cond do
-          params["name"] in get_players(socket) -> assign(socket, name_taken: true)
+          name in get_players(socket) -> assign(socket, name_taken: true)
           :else ->
             track_name(socket)
             socket
@@ -67,6 +65,12 @@ defmodule DudleWeb.GameLive do
       # if the room value is valid, get the players for the socket
       socket = if rv, do: assign(socket, players: get_players(socket)), else: socket
       socket = get_state(socket)
+  end
+
+  @impl true
+  def mount(params, _session, socket) do
+    if connected?(socket) do
+      socket = join_room_with_name(params["room"], params["name"], socket)
       {:ok, socket}
     else
       {:ok, socket}
@@ -76,6 +80,11 @@ defmodule DudleWeb.GameLive do
   @impl true
   def handle_info(%{event: "presence_diff"}, socket) do
     {:noreply, assign(socket, players: get_players(socket))}
+  end
+
+  def handle_info(%{event: "data_update", payload: data}, socket) do
+    IO.puts("Data update!")
+    {:noreply, assign(socket, data: data)}
   end
 
   @impl true

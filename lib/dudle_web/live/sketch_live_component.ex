@@ -21,5 +21,4 @@ defmodule DudleWeb.SketchLiveComponent do
     send(self(), {:change_size, size})
     {:noreply, socket}
   end
-
 end
