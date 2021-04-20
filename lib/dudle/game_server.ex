@@ -117,6 +117,9 @@ defmodule Dudle.GameServer do
     end
   end
 
+  def handle_event({:call, from}, :start_game, {:playing, _}, _),
+    do: {:keep_state_and_data, {:reply, from, :ok}}
+
   def handle_event(
         :info,
         %{event: "presence_diff"},
@@ -194,6 +197,19 @@ defmodule Dudle.GameServer do
     else
       {:keep_data, {:playing, :creating}, {:reply, from, :ok}}
     end
+  end
+
+  def handle_event({:call, from}, _event_data, _state, _data) do
+    IO.puts("Unhandled event")
+    {:keep_state_and_data, {:reply, from, {:error, :unhandled_event}}}
+  end
+
+  def handle_event(event, event_data, state, data) do
+    IO.inspect(event)
+    IO.inspect(event_data)
+    IO.inspect(state)
+    IO.inspect(data)
+    :keep_state_and_data
   end
 
   ##### :end events
