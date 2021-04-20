@@ -33,7 +33,7 @@ defmodule Dudle.Game do
   @doc """
   Try to make a new round
   """
-  @spec new_round([player()], [description()]) :: {:ok, t()} | {:error, String.t()}
+  @spec new_round([player()], [description()]) :: {:ok, round()} | {:error, String.t()}
   def new_round(players, possible_prompts \\ @prompts) do
     if length(possible_prompts) < length(players) do
       {:error, "Less prompts than there are players"}

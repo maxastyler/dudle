@@ -18,11 +18,15 @@ defmodule Dudle.GameClient do
     call_name(name, {:add_player, player})
   end
 
-  @doc """
-  Get the full state of the game.
-  """
-  def get_full_state(name) do
-    call_name(name, :get_full_state)
+  # @doc """
+  # Get the full state of the game.
+  # """
+  # def get_full_state(name) do
+  #   call_name(name, :get_full_state)
+  # end
+
+  def get_state(room, name) do
+    call_name(room, {:get_state, name})
   end
 
   @doc """

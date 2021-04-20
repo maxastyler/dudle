@@ -40,6 +40,10 @@ defmodule DudleWeb.GameLive do
     Presence.list(presence_topic(socket)) |> Map.keys() |> Enum.sort()
   end
 
+  defp get_state(socket) do
+    assign(socket, state: GameClient.get_state(socket.assigns.room, socket.assigns.name))
+  end
+
   @impl true
   def mount(params, _session, socket) do
     if connected?(socket) do
@@ -62,11 +66,11 @@ defmodule DudleWeb.GameLive do
 
       # if the room value is valid, get the players for the socket
       socket = if rv, do: assign(socket, players: get_players(socket)), else: socket
+      socket = get_state(socket)
       {:ok, socket}
     else
       {:ok, socket}
     end
-    
   end
 
   @impl true

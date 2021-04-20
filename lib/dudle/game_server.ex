@@ -134,6 +134,10 @@ defmodule Dudle.GameServer do
      }}
   end
 
+  def handle_event({:call, from}, {:get_state, name}, state, data) do
+    {:keep_state_and_data, {:reply, from, reply_data}}
+  end
+
   ##### {:playing, :creating} events
 
   def handle_event(
