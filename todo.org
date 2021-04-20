@@ -1,0 +1,11 @@
+* Change the game parts, and refactor into smaller modules
+  The game_live and game_server parts should just care about events, and not have much logic inside their event
+  handling functions. They should just call out to the smaller modules.
+  Eg, have a Play module, which contains the functions for modifying the play state, eg. adding submissions to the rounds, etc...
+  The things which should be broadcast are changes in rounds, all submissions, things like that.
+  Players should then call the genserver which will give them their respective state.
+  Player tracking should be done through presence still.
+
+  The largest part of broadcasting will be done when revealing the submissions.
+
+  Have smaller liveviews (components) for the different parts of the game state.
