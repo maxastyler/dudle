@@ -16,5 +16,6 @@
         <% :else ->  %>
             <p>Playing the game</p>
             <button phx-click="start_game">start game</button>
-<% end %>
+        <% end %>
+        <%= live_component @socket, DudleWeb.RevealComponent, name: assigns[:name], revealer: assigns[:name], id: "hi"%>
 <% end %>

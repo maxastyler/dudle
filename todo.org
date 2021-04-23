@@ -9,3 +9,28 @@
   The largest part of broadcasting will be done when revealing the submissions.
 
   Have smaller liveviews (components) for the different parts of the game state.
+
+* Client possible screens
+  What are the different screens which we need to show on the client, and what data should the client have
+  which is used in these screens?
+
+  - Game lobby
+    Data:
+    - Current players
+  - Playing with a prompt
+    Data:
+    - The prompt data (either a text or an image prompt)
+  - Revealing
+    Data:
+    - current revealer
+    - Revealed prompts
+    - voting state
+  - Ended
+    Data:
+    - scores
+    - prompts?
+
+* Messages that need to be sent
+  There are two different ways for the clients to get data: broadcasting on the room channel, and calling the game server
+  The calls to the game server are used to get information necessary for each client (new prompts)
+  The broadcasts are used to get information used by all clients (broadcasting the results, etc...)

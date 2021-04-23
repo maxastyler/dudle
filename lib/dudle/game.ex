@@ -7,6 +7,7 @@ defmodule Dudle.Game do
   and drawing the description of the previous player. The round finishes when a prompt reaches its player. 
   If there are N people in a round, there will be N turns. 
   """
+  alias Dudle.Round
 
   @type player :: String.t()
   @type description :: String.t()
@@ -17,7 +18,7 @@ defmodule Dudle.Game do
   @type round :: %{
           next_players: %{player() => player()},
           prompts: prompt_map(),
-          scores: scores(),
+          scores: scores()
         }
 
   @type t() :: %__MODULE__{
@@ -31,38 +32,61 @@ defmodule Dudle.Game do
   @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
 
   @doc """
-  Try to make a new round
-  """
-  @spec new_round([player()], [description()]) :: {:ok, round()} | {:error, String.t()}
-  def new_round(players, possible_prompts \\ @prompts) do
-    if length(possible_prompts) < length(players) do
-      {:error, "Less prompts than there are players"}
-    else
-      round = %{
-        next_players: list_to_adjacency_map(players),
-        prompts: pick_prompts(players, possible_prompts)
-      }
-      {:ok, round}
-    end
-  end
-
-  @doc """
-  Create the player->prompts map for the given set of prompts and players
-  """
-  @spec pick_prompts([player()], [String.t()]) :: prompt_map()
-  defp pick_prompts(players, prompts) do
-    for {player, prompt} <- Enum.zip(players, Enum.take_random(prompts, length(players))),
-        into: %{} do
-      {player, {prompt, []}}
-    end
-  end
-
-  @doc """
   Turn the list l into a map where each key maps to the next value in the list. 
   The last element of the list wraps to the first element.
   """
   @spec list_to_adjacency_map([t]) :: %{t => t}
   defp list_to_adjacency_map([first | rest] = l) do
     Enum.zip(l, rest ++ [first]) |> Map.new()
+  end
+
+  @doc """
+  Given a Mapset of players, and a set of prompts to use for the game, construct the initial game state. 
+  If the 
+  """
+  def new_game(players, prompts) do
+    player_list = Enum.shuffle(players)
+
+    with {:ok, round} <- Round.new_round(player_list, prompts) do
+      %{
+        players: player_list,
+        player_order: list_to_adjacency_map(player_list),
+        prompts: prompts,
+        round: round,
+        previous_rounds: []
+      }
+    else
+      {:error, e} -> {:error, e}
+    end
+  end
+
+  @doc """
+  Get the current prompt for the given player
+  """
+  def get_prompt(%{round: %{prompts: prompts}} = _game, player) do
+    prompts[player]
+  end
+
+  @doc """
+  Add the map of submissions to the current game
+
+  The submissions should be a map %{player => {submission_type, player_name, submission}}
+  """
+  def add_submissions(%{player_order: player_order} = game, submissions) do
+    update_in(game, [:round, :submissions], fn subs ->
+      for {p, s} <- subs, into: %{}, do: {p, [submissions[p] | s]}
+    end) |> 
+    put_in(
+      [:round, :prompts],
+      for({p, s} <- submissions, into: %{}, do: {player_order[p], s})
+    )
+  end
+
+  @doc """
+  Is the current round complete?
+  """
+  def round_complete?(%{players: players, round: %{submissions: submissions}} = _game) do
+    min_submission_size = (for {_p, s} <- submissions, do: length(s)) |> Enum.min
+    min_submission_size >= (length(players) + 1)
   end
 end

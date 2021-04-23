@@ -1,0 +1,7 @@
+<div>
+    <p>This is a reveal component</p>
+    <p><%= @name %></p>
+    <%= if @name == @revealer do %>
+        <button phx-click="reveal_next">Reveal next</button>
+    <% end %>
+</div>
