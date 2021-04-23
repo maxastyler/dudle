@@ -1,21 +1,18 @@
 <%= if connected?(@socket) do %>
-    <%= for p <- @players do %>
-        <p><%= p %></p>
-    <% end %>
+
 <%= cond do %>
     <% assigns[:room] == nil or assigns[:name] == nil -> %>
         <form phx-submit="enter_room">
-            <%= if assigns["room"] == nil do %>
                 <input type="text" name="room" placeholder="Enter room name" value="<%= assigns[:room] %>" />
-                <% end %>
             <input type="text" name="name" placeholder="Enter player name" value="<%= assigns[:name] %>" />
             <button type="submit">Go</button>
         </form>
         <% assigns[:name_taken] == true -> %>
             <p>Name taken!</p>
+            <% assigns[:data] != {:lobby, :lobby} -> %> <p>HIYI</p>
+                <%= live_component @socket, DudleWeb.PromptComponent, prompt: elem(assigns[:data], 1)%>
         <% :else ->  %>
             <p>Playing the game</p>
             <button phx-click="start_game">start game</button>
         <% end %>
-        <%= live_component @socket, DudleWeb.RevealComponent, name: assigns[:name], revealer: assigns[:name], id: "hi"%>
 <% end %>

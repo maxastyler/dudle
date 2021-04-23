@@ -1,13 +1,12 @@
 defmodule Dudle.GameClient do
-
   @moduledoc """
   The set of client functions for interacting with the game server
   """
 
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
-  defp call_name(name, call_data) do
-    GenServer.call(via(name), call_data)
+  defp call_name(room, call_data) do
+    GenServer.call(via(room), call_data)
   end
 
   @doc """
@@ -24,6 +23,14 @@ defmodule Dudle.GameClient do
   # def get_full_state(name) do
   #   call_name(name, :get_full_state)
   # end
+
+  def submit_image(room, player, image_data) do
+    call_name(room, {:submit_prompt, {:image, player, image_data}})
+  end
+
+  def submit_text(room, player, text) do
+    call_name(room, {:submit_prompt, {:text, player, text}})
+  end
 
   def get_state(room, name) do
     call_name(room, {:get_state, name})
@@ -43,5 +50,4 @@ defmodule Dudle.GameClient do
       _ -> {:error, "couldn't start server"}
     end
   end
-
 end

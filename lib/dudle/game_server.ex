@@ -19,8 +19,8 @@ defmodule Dudle.GameServer do
 
   :lobby
 
-  {:playing, :creating}
-  {:playing, {:reviewing, :revealing}}
+  {:playing, :submitting}
+  {:playing, {:reviewing, :reviewing}}
   {:playing, {:reviewing, :voting}}
 
   :end
@@ -36,8 +36,18 @@ defmodule Dudle.GameServer do
 
   @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
 
-  defp broadcast_data(%{room: room} = data) do
-    DudleWeb.Endpoint.broadcast("game:#{room}", "data_update", data)
+  defp notify_of_change(%{room: room} = _data) do
+    DudleWeb.Endpoint.broadcast("game:#{room}", "data_update", :data_update)
+    :ok
+  end
+
+  defp notify_review_change(%{room: room, game: game} = _data) do
+    DudleWeb.Endpoint.broadcast(
+      "game:#{room}",
+      "review_update",
+      Round.get_review_prompt(game.round)
+    )
+
     :ok
   end
 
@@ -72,9 +82,11 @@ defmodule Dudle.GameServer do
         {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}}}
 
       _ ->
-        with {:ok, new_data} <- Game.new_game_state(players) do
-          new_data = Map.merge(data, new_data)
-          {:next_state, {:playing, :creating}, new_data, {:reply, from, :ok}}
+        with {:ok, game} <- Game.new_game(players, @prompts) do
+          new_data = Map.put(data, :game, game)
+
+          {:next_state, {:playing, :submitting}, new_data,
+           [{:reply, from, :ok}, {:next_event, :internal, :notify}]}
         else
           {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}}}
         end
@@ -87,7 +99,7 @@ defmodule Dudle.GameServer do
   def handle_event(
         :info,
         %{event: "presence_diff"},
-        :lobby,
+        _state,
         %{room: room} = data
       ) do
     {:keep_state,
@@ -98,15 +110,86 @@ defmodule Dudle.GameServer do
      }}
   end
 
+  def handle_event({:call, from}, {:get_state, _player}, :lobby, _data) do
+    {:keep_state_and_data, {:reply, from, {:lobby, :lobby}}}
+  end
+
   def handle_event({:call, from}, {:get_state, player}, {:playing, :submitting} = state, data) do
-    {:keep_state_and_data, {:reply, from, {state, Game.get_prompt(data, player)}}}
+    {:keep_state_and_data, {:reply, from, {state, Game.get_prompt(data.game, player)}}}
   end
 
-  def handle_event({:call, from}, {:get_state, player}, {:playing, :revealing} = state, data) do
-    {:keep_state_and_data, {:reply, from, {}}}
+  def handle_event(
+        {:call, from},
+        {:get_state, _player},
+        {:playing, :reviewing} = state,
+        data
+      ) do
+    {:keep_state_and_data, {:reply, from, {state, Round.get_review_prompt(data.game.round)}}}
   end
 
-  ##### {:playing, :revealing} events
+  ##### {:playing, :reviewing} events
+
+  def handle_event(
+        {:call, from},
+        {:submit_prompt, {_, player, _} = prompt_data},
+        {:playing, :submitting},
+        data
+      ) do
+    new_data = Map.update(data, :turn_submissions, %{}, &Map.put(&1, player, prompt_data))
+
+    if map_size(new_data.turn_submissions) >= length(new_data.game.players) do
+      # all the submissions are in
+      {:keep_state, new_data,
+       [{:reply, from, :ok}, {:next_event, :internal, :insert_submissions}]}
+    else
+      {:keep_state, new_data, {:reply, from, :ok}}
+    end
+  end
+
+  def handle_event(
+        :internal,
+        :insert_submissions,
+        _state,
+        %{turn_submissions: subs, game: game} = data
+      ) do
+    new_game = Game.add_submissions(game, subs)
+    new_data = Map.put(data, :turn_submissions, %{})
+    IO.inspect(Game.round_complete?(new_game))
+
+    if Game.round_complete?(new_game) do
+      {:next_state, {:playing, :reviewing},
+       Map.put(
+         new_data,
+         :game,
+         Map.update!(new_game, :round, &Round.convert_to_reviewing_state(&1, new_game.players))
+       ), [{:next_event, :internal, :notify_review}]}
+    else
+      {:keep_state, Map.put(new_data, :game, new_game), [{:next_event, :internal, :notify}]}
+    end
+  end
+
+  def handle_event(:internal, :notify, _state, data) do
+    notify_of_change(data)
+    {:keep_state_and_data, []}
+  end
+
+  def handle_event(:internal, :notify_review, _state, data) do
+    notify_review_change(data)
+    {:keep_state_and_data, []}
+  end
+
+  def handle_event({:call, from}, :next_review_state, {:playing, :reviewing}, data) do
+    case Round.get_next_review_state(data.game.round) do
+      :finished ->
+        {:new_state, {:playing, :submitting},
+         Round.new_round(data.game.players, data.game.prompts),
+         [{:reply, from, :ok}, {:next_event, :internal, :notify_review}]}
+
+      new_round ->
+        {:keep_state, put_in(data, [:game, :round], new_round),
+         [{:reply, from, :ok}, {:next_event, :internal, :notify_review}]}
+    end
+  end
 
   ##### :end events
 end

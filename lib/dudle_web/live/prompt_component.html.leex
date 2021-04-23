@@ -1,14 +1,15 @@
 <%= case @prompt do %>
-    <% {:text, _} -> %>
+    <% {:text, _, _} -> %>
         <div>
-            <p>Prompt: <%= elem(@prompt, 1) %></p>
+            <p>Prompt: <%= elem(@prompt, 2) %></p>
             <div id="sketchpad" phx-update="ignore" phx-hook="SketchPad"></div>
         </div>
-        <% {:image, _} -> %>
+        <% {:image, _, _} -> %>
             <p>Prompt:</p>
-            <img src=<%= elem(@prompt, 1) %>></img>
+            <img src=<%= elem(@prompt, 2) %>></img>
             <form phx-submit="handle_text_data">
-                <input type="text" name="prompt_text" placeholder="Input your prompt text" />
+                <input type="text" name="prompt_text" placeholder="Input your prompt text" value="<%= assigns[:name] %>" />
                 <button type="submit">Submit</button>
             </form>
+            <% _ -> %> <p>Nothing</p>
 <% end %>
