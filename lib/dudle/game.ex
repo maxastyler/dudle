@@ -42,19 +42,21 @@ defmodule Dudle.Game do
 
   @doc """
   Given a Mapset of players, and a set of prompts to use for the game, construct the initial game state. 
-  If the 
+  If there are less prompts than there are players, return an {:error, error} tuple
+  Otherwise, return {:ok, round}
   """
   def new_game(players, prompts) do
     player_list = Enum.shuffle(players)
 
     with {:ok, round} <- Round.new_round(player_list, prompts) do
-      %{
-        players: player_list,
-        player_order: list_to_adjacency_map(player_list),
-        prompts: prompts,
-        round: round,
-        previous_rounds: []
-      }
+      {:ok,
+       %{
+         players: player_list,
+         player_order: list_to_adjacency_map(player_list),
+         prompts: prompts,
+         round: round,
+         previous_rounds: []
+       }}
     else
       {:error, e} -> {:error, e}
     end
@@ -75,8 +77,8 @@ defmodule Dudle.Game do
   def add_submissions(%{player_order: player_order} = game, submissions) do
     update_in(game, [:round, :submissions], fn subs ->
       for {p, s} <- subs, into: %{}, do: {p, [submissions[p] | s]}
-    end) |> 
-    put_in(
+    end)
+    |> put_in(
       [:round, :prompts],
       for({p, s} <- submissions, into: %{}, do: {player_order[p], s})
     )
@@ -86,7 +88,7 @@ defmodule Dudle.Game do
   Is the current round complete?
   """
   def round_complete?(%{players: players, round: %{submissions: submissions}} = _game) do
-    min_submission_size = (for {_p, s} <- submissions, do: length(s)) |> Enum.min
-    min_submission_size >= (length(players) + 1)
+    min_submission_size = for({_p, s} <- submissions, do: length(s)) |> Enum.min()
+    min_submission_size >= length(players) + 1
   end
 end

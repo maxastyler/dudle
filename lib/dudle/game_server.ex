@@ -30,6 +30,7 @@ defmodule Dudle.GameServer do
   use GenStateMachine
 
   alias Dudle.Game
+  alias Dudle.Round
   alias DudleWeb.Endpoint
   import Access, only: [key: 1, key: 2, at: 1]
 
@@ -63,49 +64,6 @@ defmodule Dudle.GameServer do
     )
   end
 
-  @doc """
-  Create the game state required when a new game is created
-  """
-  def new_game_state(players, prompts \\ @prompts) do
-    with {:ok, %Game{rounds: [r | rs]} = game} <-
-           Game.new_round(MapSet.to_list(players), prompts) do
-      {:ok,
-       %{submissions: empty_submissions_map(players), round: r, game: %Game{game | rounds: rs}}}
-    else
-      e -> e
-    end
-  end
-
-  @doc """
-  Create an empty submissions map from the players in the game
-  """
-  def empty_submissions_map(players), do: Map.new(players, &{&1, nil})
-
-  @doc """
-  Add the new submissions to the round.
-  Returns a tuple of {new_state, new_round}
-  If all submissions have been completed for the round, move on to the reviewing state.
-  """
-  def add_submissions_to_round(
-        %{next_players: next_players, prompts: prompts} = round,
-        new_submissions
-      ) do
-    num_players = map_size(next_players)
-
-    {new_size, new_prompts} =
-      for {player, submission} <- new_submissions, reduce: {num_players, prompts} do
-        {smallest_size, p} ->
-          get_and_update_in(
-            p,
-            [player, Access.elem(1)],
-            &{min(smallest_size, length(&1) + 1), [{player, submission} | &1]}
-          )
-      end
-
-    {{:playing, if(new_size >= num_players, do: {:reviewing, :revealing}, else: :creating)},
-     %{round | prompts: new_prompts}}
-  end
-
   ##### :lobby events
 
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
@@ -114,9 +72,8 @@ defmodule Dudle.GameServer do
         {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}}}
 
       _ ->
-        with {:ok, new_data} <- new_game_state(players) do
+        with {:ok, new_data} <- Game.new_game_state(players) do
           new_data = Map.merge(data, new_data)
-          broadcast_data(new_data)
           {:next_state, {:playing, :creating}, new_data, {:reply, from, :ok}}
         else
           {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}}}
@@ -141,88 +98,15 @@ defmodule Dudle.GameServer do
      }}
   end
 
-  def handle_event({:call, from}, {:get_state, name}, state, data) do
-    reply_data = []
-    {:keep_state_and_data, {:reply, from, reply_data}}
+  def handle_event({:call, from}, {:get_state, player}, {:playing, :submitting} = state, data) do
+    {:keep_state_and_data, {:reply, from, {state, Game.get_prompt(data, player)}}}
   end
 
-  ##### {:playing, :creating} events
-
-  def handle_event(
-        {:call, from},
-        {:submit, player, submission},
-        {:playing, :creating},
-        %{submissions: submissions, round: round, game: %Game{players: players}, room: room} = data
-      ) do
-    new_submissions = Map.put(submissions, player, submission)
-    # if all submissions are in:
-    if Map.values(new_submissions) |> Enum.all?() do
-      {state, round} = add_submissions_to_round(round, new_submissions)
-      new_data = %{data | submissions: empty_submissions_map(players), round: round}
-
-      case state do
-        {_, :creating} ->
-          {:keep_state, new_data, {:reply, from, :ok}}
-
-        _ ->
-          {:new_state_and_data, {:playing, {:reviewing, :voting}}, new_data, {:reply, from, :ok}}
-      end
-    else
-      {:keep_state, %{data | submissions: new_submissions}, {:reply, from, :ok}}
-    end
+  def handle_event({:call, from}, {:get_state, player}, {:playing, :revealing} = state, data) do
+    {:keep_state_and_data, {:reply, from, {}}}
   end
 
-  ##### {:playing, {:reviewing, :revealing}} events
-
-  # def handle_event(
-  #       {:call, from},
-  #       {:reveal, player},
-  #       {:playing, {:reviewing, :revealing}},
-  #       data
-  #     ) do
-  #   {:new_state_and_data, {:playing, {:reviewing, :voting}}, %{data, }}
-  # end
-
-  ##### {:playing, {:reviewing, :voting}} events
-
-  # def handle_event(:enter, _old_state, {:playing, {:reviewing, :voting}}, data) do
-  # end
-
-  def handle_event(
-        {:call, from},
-        {:vote, from_player, for_player, vote_type},
-        {:playing, {:reviewing, :voting}},
-        %{round: round, game: %Game{players: players}} = data
-      ) do
-    {votes_count, new_data} =
-      Access.get_and_update(data, :votes, fn
-        nil ->
-          {1, %{from_player => {vote_type, for_player}}}
-
-        votes ->
-          new_votes = Map.put(votes, from_player, {vote_type, for_player})
-          {map_size(new_votes), new_votes}
-      end)
-
-    if votes_count >= length(players) do
-      round
-    else
-      {:keep_data, {:playing, :creating}, {:reply, from, :ok}}
-    end
-  end
-
-  def handle_event({:call, from}, _event_data, _state, _data) do
-    IO.puts("Unhandled event")
-    {:keep_state_and_data, {:reply, from, {:error, :unhandled_event}}}
-  end
-
-  def handle_event(event, event_data, state, data) do
-    IO.inspect(event)
-    IO.inspect(event_data)
-    IO.inspect(state)
-    IO.inspect(data)
-    :keep_state_and_data
-  end
+  ##### {:playing, :revealing} events
 
   ##### :end events
 end
