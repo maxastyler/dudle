@@ -1,18 +1,28 @@
 <%= if connected?(@socket) do %>
-
-<%= cond do %>
-    <% assigns[:room] == nil or assigns[:name] == nil -> %>
+    <%= case @state do %>
+        <% :joining -> %>
         <form phx-submit="enter_room">
                 <input type="text" name="room" placeholder="Enter room name" value="<%= assigns[:room] %>" />
             <input type="text" name="name" placeholder="Enter player name" value="<%= assigns[:name] %>" />
             <button type="submit">Go</button>
         </form>
-        <% assigns[:name_taken] == true -> %>
-            <p>Name taken!</p>
-            <% assigns[:data] != {:lobby, :lobby} -> %> <p>HIYI</p>
-                <%= live_component @socket, DudleWeb.PromptComponent, prompt: elem(assigns[:data], 1)%>
-        <% :else ->  %>
-            <p>Playing the game</p>
-            <button phx-click="start_game">start game</button>
+        <% :lobby ->  %>
+            <p>In lobby</p>
+            <button phx-click="start_game">Start game</button>
+            <% {:playing, :submitting} -> %>
+                <p>playing, submitting</p>
+                <%= live_component @socket, DudleWeb.PromptComponent, text_data: @text_data, prompt: @prompt%>
+                <p>Submitted: <%= @submitted %></p>
+                <% {:playing, :reviewing} -> %>
+                    <p>Playing, reviewing</p>
+                    <div id="review_items" phx-update="<%= if @reset_review_state, do: "replace", else: "append" %>">
+                    <%= for {{player, elem}, {prompt_type, prompt_player, prompt}} <- @review_data do %>
+                        <%= live_component @socket, DudleWeb.RevealComponent, name: prompt_player, id: elem, prompt_type: prompt_type, prompt: prompt %>
+                    <% end %>
+                    </div>
+                    <div>
+                        <button phx-click="next_review_state">Next</button>
+                    </div>
+                    <% _ -> %> <p>Other state</p>
         <% end %>
 <% end %>

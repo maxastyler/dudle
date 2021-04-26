@@ -45,7 +45,7 @@ defmodule Dudle.GameServer do
     DudleWeb.Endpoint.broadcast(
       "game:#{room}",
       "review_update",
-      Round.get_review_prompt(game.round)
+      {game.round.review_state, Round.get_review_prompt(game.round)}
     )
 
     :ok
@@ -76,7 +76,10 @@ defmodule Dudle.GameServer do
 
   ##### :lobby events
 
+  @impl true
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
+    IO.puts("Start game")
+
     case MapSet.size(players) do
       0 ->
         {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}}}
@@ -118,13 +121,16 @@ defmodule Dudle.GameServer do
     {:keep_state_and_data, {:reply, from, {state, Game.get_prompt(data.game, player)}}}
   end
 
+  # return to the player a tuple {state, review_state, current_prompt}
   def handle_event(
         {:call, from},
         {:get_state, _player},
         {:playing, :reviewing} = state,
         data
       ) do
-    {:keep_state_and_data, {:reply, from, {state, Round.get_review_prompt(data.game.round)}}}
+    {:keep_state_and_data,
+     {:reply, from,
+      {state, data.game.round.review_state, Round.get_review_prompt(data.game.round)}}}
   end
 
   ##### {:playing, :reviewing} events
@@ -134,8 +140,14 @@ defmodule Dudle.GameServer do
         {:submit_prompt, {_, player, _} = prompt_data},
         {:playing, :submitting},
         data
-      ) do
-    new_data = Map.update(data, :turn_submissions, %{}, &Map.put(&1, player, prompt_data))
+  ) do
+    new_data =
+      Map.update(
+        data,
+        :turn_submissions,
+        %{player => prompt_data},
+        &Map.put(&1, player, prompt_data)
+      )
 
     if map_size(new_data.turn_submissions) >= length(new_data.game.players) do
       # all the submissions are in
@@ -154,7 +166,6 @@ defmodule Dudle.GameServer do
       ) do
     new_game = Game.add_submissions(game, subs)
     new_data = Map.put(data, :turn_submissions, %{})
-    IO.inspect(Game.round_complete?(new_game))
 
     if Game.round_complete?(new_game) do
       {:next_state, {:playing, :reviewing},
@@ -181,9 +192,13 @@ defmodule Dudle.GameServer do
   def handle_event({:call, from}, :next_review_state, {:playing, :reviewing}, data) do
     case Round.get_next_review_state(data.game.round) do
       :finished ->
-        {:new_state, {:playing, :submitting},
-         Round.new_round(data.game.players, data.game.prompts),
-         [{:reply, from, :ok}, {:next_event, :internal, :notify_review}]}
+        with {:ok, new_round} <- Round.new_round(data.game.players, data.game.prompts),
+             new_data <-
+               update_in(data, [:game, :previous_rounds], &[data.game.round | &1])
+               |> put_in([:game, :round], new_round) do
+          {:next_state, {:playing, :submitting}, new_data,
+           [{:reply, from, :ok}, {:next_event, :internal, :notify}]}
+        end
 
       new_round ->
         {:keep_state, put_in(data, [:game, :round], new_round),

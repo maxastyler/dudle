@@ -42,7 +42,20 @@ defmodule DudleWeb.GameLive do
   end
 
   defp get_state(socket) do
-    assign(socket, state: GameClient.get_state(socket.assigns.room, socket.assigns.name))
+    case GameClient.get_state(socket.assigns.room, socket.assigns.name) do
+      {:lobby, _} ->
+        assign(socket, state: :lobby)
+
+      {{:playing, :submitting} = state, data} ->
+        assign(socket, state: state, prompt: data, text_data: "", submitted: false)
+
+      {{:playing, :reviewing} = state, review_state, review_prompt} ->
+        assign(socket,
+          state: state,
+          reset_review_state: true,
+          review_data: [{review_state, review_prompt}]
+        )
+    end
   end
 
   defp join_room_with_name(room, name, socket) do
@@ -56,16 +69,14 @@ defmodule DudleWeb.GameLive do
       if rv and nv do
         subscribe_to_room(socket)
 
-        socket =
-          cond do
-            name in get_players(socket) ->
-              assign(socket, name_taken: true)
+        cond do
+          name in get_players(socket) ->
+            assign(socket, name_taken: true)
 
-            :else ->
-              track_name(socket)
-              socket
-          end
-
+          :else ->
+            track_name(socket)
+            assign(socket, name_taken: false)
+        end
       else
         socket
       end
@@ -76,12 +87,23 @@ defmodule DudleWeb.GameLive do
   end
 
   @impl true
+  @doc """
+  The assigns that will exist in the socket are:
+  :state - The current state of the game
+  :room - The room the socket's in (this can be nil)
+  :name_taken
+  :name - The name of the current player (this can be nil too)
+  :data - The data associated with the current state
+  :prompt - The current prompt
+  :review_data - the data to review
+  """
   def mount(params, _session, socket) do
     if connected?(socket) do
+      socket = assign(socket, state: :joining)
       socket = join_room_with_name(params["room"], params["name"], socket)
-      {:ok, socket}
+      {:ok, socket, temporary_assigns: [review_data: []]}
     else
-      {:ok, socket}
+      {:ok, assign(socket, state: :mounting)}
     end
   end
 
@@ -91,12 +113,19 @@ defmodule DudleWeb.GameLive do
   end
 
   def handle_info(%{event: "data_update", payload: :data_update}, socket) do
-    {:noreply,
-     assign(socket, data: GameClient.get_state(socket.assigns.room, socket.assigns.name))}
+    {:noreply, get_state(socket)}
   end
 
-  def handle_info(%{event: "review_update", payload: review_data}, socket) do
-    {:noreply, assign(socket, review_data: review_data)}
+  def handle_info(
+        %{event: "review_update", payload: {{_, review_element} = review_state, prompt}},
+        socket
+      ) do
+    {:noreply,
+     assign(socket,
+       review_data: [{review_state, prompt}],
+       reset_review_state: review_element == 0,
+       state: {:playing, :reviewing}
+     )}
   end
 
   @impl true
@@ -111,12 +140,12 @@ defmodule DudleWeb.GameLive do
 
   def handle_event("handle_image_data", %{"image_data" => image_data}, socket) do
     GameClient.submit_image(socket.assigns.room, socket.assigns.name, image_data)
-    {:noreply, assign(socket, image_data: image_data)}
+    {:noreply, assign(socket, image_data: image_data, submitted: true)}
   end
 
   def handle_event("handle_text_data", %{"prompt_text" => data} = _data, socket) do
-    GameClient.submit_image(socket.assigns.room, socket.assigns.name, data)
-    {:noreply, assign(socket, text_data: data)}
+    GameClient.submit_text(socket.assigns.room, socket.assigns.name, data)
+    {:noreply, assign(socket, text_data: data, submitted: true)}
   end
 
   def handle_event("start_game", _, socket) do
@@ -134,5 +163,10 @@ defmodule DudleWeb.GameLive do
 
   def handle_event("get_image", _, socket) do
     {:noreply, push_event(socket, "send_image", %{})}
+  end
+
+  def handle_event("next_review_state", _, socket) do
+    GameClient.reveal_next(socket.assigns.room)
+    {:noreply, socket}
   end
 end

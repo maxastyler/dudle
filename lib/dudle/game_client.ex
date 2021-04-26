@@ -43,6 +43,10 @@ defmodule Dudle.GameClient do
     call_name(name, :start_game)
   end
 
+  def reveal_next(name) do
+    call_name(name, :next_review_state)
+  end
+
   def ensure_server_started(name) do
     case Dudle.GameServer.start_server(name) do
       {:ok, pid} -> {:ok, pid}

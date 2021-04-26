@@ -1,7 +1,9 @@
 <div>
     <p>This is a reveal component</p>
-    <p><%= @name %></p>
-    <%= if @name == @revealer do %>
-        <button phx-click="reveal_next">Reveal next</button>
+    <p>Prompt type: <%= @prompt_type %></p>
+    <%= case @prompt_type do %>
+        <%= :image ->  %> <img src="<%= @prompt %>"/>
+            <%= :text ->  %> <h3><%= @prompt %></h3>
     <% end %>
+    <p>By: <%= @name %></p>
 </div>
