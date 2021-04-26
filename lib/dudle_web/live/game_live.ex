@@ -98,6 +98,7 @@ defmodule DudleWeb.GameLive do
   :review_data - the data to review
   """
   def mount(params, _session, socket) do
+    socket = assign(socket, players: [])
     if connected?(socket) do
       socket = assign(socket, state: :joining)
       socket = join_room_with_name(params["room"], params["name"], socket)

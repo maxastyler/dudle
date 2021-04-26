@@ -140,7 +140,7 @@ defmodule Dudle.GameServer do
         {:submit_prompt, {_, player, _} = prompt_data},
         {:playing, :submitting},
         data
-  ) do
+      ) do
     new_data =
       Map.update(
         data,
@@ -204,6 +204,10 @@ defmodule Dudle.GameServer do
         {:keep_state, put_in(data, [:game, :round], new_round),
          [{:reply, from, :ok}, {:next_event, :internal, :notify_review}]}
     end
+  end
+
+  def handle_event({:call, from}, _, _, _) do
+    {:keep_state_and_data, [{:reply, from, {:error, "event unhandled"}}]}
   end
 
   ##### :end events

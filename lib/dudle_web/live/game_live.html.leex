@@ -1,3 +1,8 @@
+<section class="row">
+    <article class="column">
+        <%= live_component @socket, DudleWeb.PlayersComponent, id: :players_component, players: @players %>
+    </article>
+    <article class="column">
 <%= if connected?(@socket) do %>
     <%= case @state do %>
         <% :joining -> %>
@@ -25,4 +30,6 @@
                     </div>
                     <% _ -> %> <p>Other state</p>
         <% end %>
-<% end %>
+                <% end %>
+    </article>
+</section>
