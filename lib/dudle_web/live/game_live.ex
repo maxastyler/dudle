@@ -50,9 +50,11 @@ defmodule DudleWeb.GameLive do
         assign(socket, state: state, prompt: data, text_data: "", submitted: false)
 
       {{:playing, :reviewing} = state, review_state, review_prompt} ->
+        # TODO: refactor this into a function (cause it's used in two places)
         assign(socket,
           state: state,
           reset_review_state: true,
+          review_state: review_state,
           review_data: [{review_state, review_prompt}]
         )
     end
@@ -124,6 +126,7 @@ defmodule DudleWeb.GameLive do
     {:noreply,
      assign(socket,
        review_data: [{review_state, prompt}],
+       review_state: review_state,
        reset_review_state: review_element == 0,
        state: {:playing, :reviewing}
      )}

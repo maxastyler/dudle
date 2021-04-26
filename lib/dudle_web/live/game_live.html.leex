@@ -12,22 +12,22 @@
             <button type="submit">Go</button>
         </form>
         <% :lobby ->  %>
-            <p>In lobby</p>
+            <h2>In lobby</h2>
             <button phx-click="start_game">Start game</button>
             <% {:playing, :submitting} -> %>
-                <p>playing, submitting</p>
                 <%= live_component @socket, DudleWeb.PromptComponent, text_data: @text_data, prompt: @prompt%>
                 <p>Submitted: <%= @submitted %></p>
                 <% {:playing, :reviewing} -> %>
-                    <p>Playing, reviewing</p>
                     <div id="review_items" phx-update="<%= if @reset_review_state, do: "replace", else: "append" %>">
                     <%= for {{player, elem}, {prompt_type, prompt_player, prompt}} <- @review_data do %>
                         <%= live_component @socket, DudleWeb.RevealComponent, name: prompt_player, id: elem, prompt_type: prompt_type, prompt: prompt %>
                     <% end %>
                     </div>
+                    <%= if @name == elem(@review_state, 0) do %>
                     <div>
                         <button phx-click="next_review_state">Next</button>
                     </div>
+                    <% end %>
                     <% _ -> %> <p>Other state</p>
         <% end %>
                 <% end %>

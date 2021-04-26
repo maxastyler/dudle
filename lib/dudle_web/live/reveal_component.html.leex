@@ -1,9 +1,7 @@
 <div>
-    <p>This is a reveal component</p>
-    <p>Prompt type: <%= @prompt_type %></p>
     <%= case @prompt_type do %>
         <%= :image ->  %> <img src="<%= @prompt %>"/>
             <%= :text ->  %> <h3><%= @prompt %></h3>
     <% end %>
-    <p>By: <%= @name %></p>
+    <h5><%= @name %></h5>
 </div>

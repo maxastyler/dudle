@@ -34,7 +34,7 @@ Hooks.SketchPad = {
                 color: pen_colours[0],
                 size: pen_sizes[0]
             },
-            width: 100,
+            width: 500,
         });
 
         this.send_function = () => {this.pushEvent("handle_sketch_data",
