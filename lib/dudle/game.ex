@@ -46,7 +46,7 @@ defmodule Dudle.Game do
   Otherwise, return {:ok, round}
   """
   def new_game(players, prompts) do
-    player_list = Enum.shuffle(players)
+    player_list = Enum.shuffle(Map.keys(players))
 
     with {:ok, round} <- Round.new_round(player_list, prompts) do
       {:ok,

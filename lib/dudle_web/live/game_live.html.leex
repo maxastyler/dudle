@@ -1,9 +1,12 @@
+<%= if assigns[:room] do %>
+<h2>Currently playing dudle in room: <%= @room %></h2>
+<% end %>
 <section class="row">
     <article class="column">
-        <%= live_component @socket, DudleWeb.PlayersComponent, id: :players_component, players: @players %>
+        <%= live_component @socket, DudleWeb.PlayersComponent, id: :players_component, players: @players, current_player: assigns[:name], state: @state %>
     </article>
     <article class="column">
-<%= if connected?(@socket) do %>
+        <%= if connected?(@socket) do %>
     <%= case @state do %>
         <% :joining -> %>
         <form phx-submit="enter_room">

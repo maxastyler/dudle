@@ -41,6 +41,12 @@ defmodule Dudle.GameServer do
     :ok
   end
 
+  defp reset_player_submission_state(data) do
+    update_in(data, [:players], fn ps ->
+      for {p, m} <- ps, into: %{}, do: {p, put_in(m, [:submitted], false)}
+    end)
+  end
+
   defp notify_review_change(%{room: room, game: game} = _data) do
     DudleWeb.Endpoint.broadcast(
       "game:#{room}",
@@ -49,6 +55,14 @@ defmodule Dudle.GameServer do
     )
 
     :ok
+  end
+
+  defp notify_player_change(%{players: players, room: room} = _data) do
+    DudleWeb.Endpoint.broadcast(
+      "game:#{room}",
+      "player_update",
+      Enum.sort(players)
+    )
   end
 
   def start_link(options) do
@@ -70,7 +84,7 @@ defmodule Dudle.GameServer do
   def start_server(name) do
     DynamicSupervisor.start_child(
       Dudle.GameSupervisor,
-      {Dudle.GameServer, data: %{players: MapSet.new(), room: name}, name: via(name)}
+      {Dudle.GameServer, data: %{players: %{}, room: name}, name: via(name)}
     )
   end
 
@@ -80,7 +94,7 @@ defmodule Dudle.GameServer do
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
     IO.puts("Start game")
 
-    case MapSet.size(players) do
+    case map_size(players) do
       0 ->
         {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}}}
 
@@ -96,8 +110,22 @@ defmodule Dudle.GameServer do
     end
   end
 
-  def handle_event({:call, from}, :start_game, {:playing, _}, _),
-    do: {:keep_state_and_data, {:reply, from, :ok}}
+  def handle_event(
+        :info,
+        %{event: "presence_diff"},
+        :lobby,
+        %{room: room} = data
+      ) do
+    {:keep_state,
+     %{
+       data
+       | players:
+           Dudle.Presence.list("presence:#{room}")
+           |> Map.keys()
+           |> Enum.map(&{&1, %{online: true}})
+           |> Map.new()
+     }, {:next_event, :internal, :notify_players}}
+  end
 
   def handle_event(
         :info,
@@ -105,12 +133,20 @@ defmodule Dudle.GameServer do
         _state,
         %{room: room} = data
       ) do
+    presence_players =
+      Dudle.Presence.list("presence:#{room}")
+      |> Map.keys()
+
+    new_player_state =
+      for player <- data.game.players, reduce: data.players do
+        acc -> put_in(acc, [player, :online], player in presence_players)
+      end
+
     {:keep_state,
      %{
        data
-       | players:
-           Dudle.Presence.list("presence:#{room}") |> Map.keys() |> Enum.sort() |> MapSet.new()
-     }}
+       | players: new_player_state
+     }, {:next_event, :internal, :notify_players}}
   end
 
   def handle_event({:call, from}, {:get_state, _player}, :lobby, _data) do
@@ -148,13 +184,14 @@ defmodule Dudle.GameServer do
         %{player => prompt_data},
         &Map.put(&1, player, prompt_data)
       )
+      |> put_in([:players, player, :submitted], true)
 
     if map_size(new_data.turn_submissions) >= length(new_data.game.players) do
       # all the submissions are in
       {:keep_state, new_data,
        [{:reply, from, :ok}, {:next_event, :internal, :insert_submissions}]}
     else
-      {:keep_state, new_data, {:reply, from, :ok}}
+      {:keep_state, new_data, [{:reply, from, :ok}, {:next_event, :internal, :notify_players}]}
     end
   end
 
@@ -165,7 +202,7 @@ defmodule Dudle.GameServer do
         %{turn_submissions: subs, game: game} = data
       ) do
     new_game = Game.add_submissions(game, subs)
-    new_data = Map.put(data, :turn_submissions, %{})
+    new_data = Map.put(data, :turn_submissions, %{}) |> reset_player_submission_state()
 
     if Game.round_complete?(new_game) do
       {:next_state, {:playing, :reviewing},
@@ -173,9 +210,10 @@ defmodule Dudle.GameServer do
          new_data,
          :game,
          Map.update!(new_game, :round, &Round.convert_to_reviewing_state(&1, new_game.players))
-       ), [{:next_event, :internal, :notify_review}]}
+       ), [{:next_event, :internal, :notify_review}, {:next_event, :internal, :notify_players}]}
     else
-      {:keep_state, Map.put(new_data, :game, new_game), [{:next_event, :internal, :notify}]}
+      {:keep_state, Map.put(new_data, :game, new_game),
+       [{:next_event, :internal, :notify}, {:next_event, :internal, :notify_players}]}
     end
   end
 
@@ -186,6 +224,11 @@ defmodule Dudle.GameServer do
 
   def handle_event(:internal, :notify_review, _state, data) do
     notify_review_change(data)
+    {:keep_state_and_data, []}
+  end
+
+  def handle_event(:internal, :notify_players, _state, data) do
+    notify_player_change(data)
     {:keep_state_and_data, []}
   end
 
