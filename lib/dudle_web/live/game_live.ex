@@ -136,6 +136,10 @@ defmodule DudleWeb.GameLive do
     {:noreply, get_state(socket)}
   end
 
+  def handle_info(%{event: "server_terminating"}, socket) do
+    {:noreply, assign(socket, server_terminated: true)}
+  end
+
   def handle_info(
         %{event: "review_update", payload: {{_, review_element} = review_state, prompt}},
         socket

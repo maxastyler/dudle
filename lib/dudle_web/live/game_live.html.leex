@@ -1,3 +1,6 @@
+<%= if assigns[:server_terminated] do %>
+    <h1>The room timed out because no-one interacted with it :( Refresh to restart the game</h1>
+<% else %>
 <%= if assigns[:room] do %>
 <h2>Currently playing dudle in room: <%= @room %></h2>
 <% end %>
@@ -36,3 +39,4 @@
                 <% end %>
     </article>
 </section>
+<% end %>

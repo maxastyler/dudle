@@ -35,7 +35,7 @@ defmodule Dudle.GameServer do
   import Access, only: [key: 1, key: 2, at: 1]
 
   @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
-  @server_timeout 1 * 1000
+  @server_timeout 60 * 15 * 1000
 
   defp wrap_timeout(xs) when is_list(xs), do: [{:timeout, @server_timeout, :any} | xs]
   defp wrap_timeout(term), do: [term, {:timeout, @server_timeout, :any}]
@@ -80,6 +80,17 @@ defmodule Dudle.GameServer do
     {:ok, :lobby, data, [{:timeout, @server_timeout, :any}]}
   end
 
+  @impl true
+  def terminate(_reason, _state, %{room: room} = _data) do
+    DudleWeb.Endpoint.broadcast(
+      "game:#{room}",
+      "server_terminating",
+      nil
+    )
+
+    :ok
+  end
+
   defp via(name), do: {:via, Registry, {Dudle.GameRegistry, name}}
 
   @doc """
@@ -100,7 +111,8 @@ defmodule Dudle.GameServer do
 
     case map_size(players) do
       0 ->
-        {:keep_state_and_data, {:reply, from, {:error, "Can't start game with no players"}} |> wrap_timeout()}
+        {:keep_state_and_data,
+         {:reply, from, {:error, "Can't start game with no players"}} |> wrap_timeout()}
 
       _ ->
         with {:ok, game} <- Game.new_game(players, @prompts) do
@@ -109,7 +121,8 @@ defmodule Dudle.GameServer do
           {:next_state, {:playing, :submitting}, new_data,
            [{:reply, from, :ok}, {:next_event, :internal, :notify}] |> wrap_timeout()}
         else
-          {:error, error} -> {:keep_state_and_data, {:reply, from, {:error, error}} |> wrap_timeout()}
+          {:error, error} ->
+            {:keep_state_and_data, {:reply, from, {:error, error}} |> wrap_timeout()}
         end
     end
   end
@@ -158,7 +171,8 @@ defmodule Dudle.GameServer do
   end
 
   def handle_event({:call, from}, {:get_state, player}, {:playing, :submitting} = state, data) do
-    {:keep_state_and_data, {:reply, from, {state, Game.get_prompt(data.game, player)}} |> wrap_timeout()}
+    {:keep_state_and_data,
+     {:reply, from, {state, Game.get_prompt(data.game, player)}} |> wrap_timeout()}
   end
 
   # return to the player a tuple {state, review_state, current_prompt}
@@ -170,7 +184,8 @@ defmodule Dudle.GameServer do
       ) do
     {:keep_state_and_data,
      {:reply, from,
-      {state, data.game.round.review_state, Round.get_review_prompt(data.game.round)}} |> wrap_timeout()}
+      {state, data.game.round.review_state, Round.get_review_prompt(data.game.round)}}
+     |> wrap_timeout()}
   end
 
   ##### {:playing, :reviewing} events
@@ -195,7 +210,8 @@ defmodule Dudle.GameServer do
       {:keep_state, new_data,
        [{:reply, from, :ok}, {:next_event, :internal, :insert_submissions}] |> wrap_timeout()}
     else
-      {:keep_state, new_data, [{:reply, from, :ok}, {:next_event, :internal, :notify_players}] |> wrap_timeout()}
+      {:keep_state, new_data,
+       [{:reply, from, :ok}, {:next_event, :internal, :notify_players}] |> wrap_timeout()}
     end
   end
 
@@ -214,10 +230,13 @@ defmodule Dudle.GameServer do
          new_data,
          :game,
          Map.update!(new_game, :round, &Round.convert_to_reviewing_state(&1, new_game.players))
-       ), [{:next_event, :internal, :notify_review}, {:next_event, :internal, :notify_players}] |> wrap_timeout()}
+       ),
+       [{:next_event, :internal, :notify_review}, {:next_event, :internal, :notify_players}]
+       |> wrap_timeout()}
     else
       {:keep_state, Map.put(new_data, :game, new_game),
-       [{:next_event, :internal, :notify}, {:next_event, :internal, :notify_players}] |> wrap_timeout()}
+       [{:next_event, :internal, :notify}, {:next_event, :internal, :notify_players}]
+       |> wrap_timeout()}
     end
   end
 
