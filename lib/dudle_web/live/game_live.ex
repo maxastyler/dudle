@@ -67,6 +67,16 @@ defmodule DudleWeb.GameLive do
     if rv, do: GameClient.ensure_server_started(room)
 
     socket =
+      if nv,
+        do: socket,
+        else:
+          put_flash(
+            socket,
+            :error,
+            "Player name invalid (must be between 1 and #{@maximum_name_length} characters)"
+          )
+
+    socket =
       if rv,
         do: assign(socket, room: room),
         else:
@@ -77,26 +87,17 @@ defmodule DudleWeb.GameLive do
           )
 
     socket =
-      if nv,
-        do: assign(socket, name: name),
-        else:
-          put_flash(
-            socket,
-            :error,
-            "Player name invalid (must be between 1 and #{@maximum_name_length} characters)"
-          )
-
-    socket =
       if rv and nv do
         subscribe_to_room(socket)
 
         cond do
           name in get_players(socket) ->
-            assign(socket, name_taken: true)
+            assign(socket, name_taken: true, name: nil) |> put_flash(:error, "Name already taken")
 
           :else ->
+            socket = assign(socket, name: name, name_taken: false)
             track_name(socket)
-            assign(socket, name_taken: false)
+            socket
         end
       else
         socket
