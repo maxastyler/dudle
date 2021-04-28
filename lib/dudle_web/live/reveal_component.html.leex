@@ -1,7 +1,7 @@
 <div>
-    <%= case @prompt_type do %>
-        <%= :image ->  %> <img src="<%= @prompt %>"/>
-            <%= :text ->  %> <h3><%= @prompt %></h3>
+    <%= case elem(@prompt, 0) do %>
+        <%= :image ->  %> <img src="<%= elem(@prompt, 2) %>"/>
+            <%= :text ->  %> <h3><%= elem(@prompt, 2) %></h3>
     <% end %>
-    <h5><%= @name %></h5>
+    <h5><%= elem(@prompt, 1) %></h5>
 </div>

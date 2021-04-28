@@ -11,7 +11,15 @@ defmodule Dudle.Prompts do
       "Too much beer",
       "Affluent Pork Scratchings",
       "Windy Bums",
-      "A bridge too far"
+      "A bridge too far",
+      "Scribbles",
+      "Friendly dentist",
+      "A tasty monstera",
+      "Pillow skull",
+      "Waking up to find you're at sea",
+      "Jumped up plumps",
+      "A daring escape",
+      "Flipped cows",
     ]
   end
 end

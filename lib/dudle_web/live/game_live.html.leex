@@ -30,22 +30,27 @@
                             <%= case other do %>
                                 <% :voting ->  %>
                                     <h2>Voting</h2>
-                                <% {prompt_type, prompt_player, prompt} -> %>
-                                    <%= live_component @socket, DudleWeb.RevealComponent, name: prompt_player,
-                                    id: elem, prompt_type: prompt_type, prompt: prompt %>                                                         <% end %>
+                                <% prompt -> %>
+                                    <%= live_component @socket, DudleWeb.RevealComponent,
+                                    id: elem, prompt: prompt %>
+                                <% end %>
                         <% end %>
                     </div>
                     <%= case @review_state do %>
-                        <% {player, {:text_correct, {first_prompt, last_prompt}}} -> %>
-                            <h3>Reviewing player <%= player %></h3>
+                        <% {player, {:text_correct, {first_prompt, {_, p, _} = last_prompt}}} -> %>
+                            <h3>Reviewing player <%= p %></h3>
                             <%= if @name == player do %>
                                 <h3>Is this text close enough?</h3>
-                                
+                                <%= live_component @socket, DudleWeb.RevealComponent,
+                                prompt: first_prompt %>
+                                <%= live_component @socket, DudleWeb.RevealComponent,
+                                prompt: last_prompt %>
                                 <button phx-click="text_correct" phx-value-player-choice="true">Correct</button>
                                 <button phx-click="text_correct" phx-value-player-choice="false">Incorrect</button>
                             <% end %>
                             <% {player, {:vote, players}} -> %>
                                 <%= if @name == player do %>
+                                    <h3>Who was your favourite?</h3>
                                     <%= for p <- players do %>
                                         <button phx-click="vote" phx-value-player-choice="<%= p %>"><%= p %></button>
                                     <% end %>
