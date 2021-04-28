@@ -54,4 +54,12 @@ defmodule Dudle.GameClient do
       _ -> {:error, "couldn't start server"}
     end
   end
+
+  def text_correct(name, is_text_correct) do
+    call_name(name, {:text_correct, is_text_correct})
+  end
+
+  def vote(name, player) do
+    call_name(name, {:vote, player})
+  end
 end

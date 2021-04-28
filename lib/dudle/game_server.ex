@@ -52,8 +52,12 @@ defmodule Dudle.GameServer do
         {round.review_state, Round.get_review_prompt(round)}
 
       :else ->
-        round.review_state
+        {round.review_state, :voting}
     end
+  end
+
+  defp add_score(players, player, amount) do
+    update_in(players, [player, :score], &(&1 + amount))
   end
 
   defp notify_data_update(%{room: room} = _data) do
@@ -132,7 +136,12 @@ defmodule Dudle.GameServer do
             )
 
           {:next_state, {:playing, :submitting}, new_data,
-           [{:reply, from, :ok}, {:next_event, :internal, :notify}] |> wrap_timeout()}
+           [
+             {:reply, from, :ok},
+             {:next_event, :internal, :notify},
+             {:next_event, :internal, :notify_players}
+           ]
+           |> wrap_timeout()}
         else
           {:error, error} ->
             {:keep_state_and_data, {:reply, from, {:error, error}} |> wrap_timeout()}
@@ -287,6 +296,69 @@ defmodule Dudle.GameServer do
       new_round ->
         {:keep_state, put_in(data, [:game, :round], new_round),
          [{:reply, from, :ok}, {:next_event, :internal, :notify_review}] |> wrap_timeout()}
+    end
+  end
+
+  def handle_event({:call, from}, {:text_correct, is_text_correct}, {:playing, :reviewing}, data) do
+    new_round = Round.get_next_review_state(data.game.round, data.game.players)
+
+    new_players =
+      case is_text_correct do
+        true ->
+          add_score(
+            data.players,
+            get_in(data, [
+              :game,
+              :round,
+              :review_state,
+              Access.elem(1),
+              Access.elem(1),
+              Access.elem(1),
+              Access.elem(1)
+            ]),
+            1
+          )
+
+        false ->
+          data.players
+      end
+
+    {:keep_state, put_in(data, [:players], new_players) |> put_in([:game, :round], new_round),
+     [
+       {:reply, from, :ok},
+       {:next_event, :internal, :notify_review},
+       {:next_event, :internal, :notify_players}
+     ]
+     |> wrap_timeout()}
+  end
+
+  def handle_event({:call, from}, {:vote, player}, {:playing, :reviewing}, data) do
+    new_players = add_score(data.players, player, 1)
+
+    case Round.get_next_review_state(data.game.round, data.game.players) do
+      :finished ->
+        with {:ok, new_round} <- Round.new_round(data.game.players, data.game.prompts),
+             new_data <-
+               update_in(data, [:game, :previous_rounds], &[data.game.round | &1])
+               |> put_in([:game, :round], new_round)
+               |> put_in([:players], new_players) do
+          {:next_state, {:playing, :submitting}, new_data,
+           [
+             {:reply, from, :ok},
+             {:next_event, :internal, :notify},
+             {:next_event, :internal, :notify_players}
+           ]
+           |> wrap_timeout()}
+        end
+
+      new_round ->
+        {:keep_state, put_in(data, [:game, :round], new_round) |> put_in([:players], new_players),
+         [
+           {:reply, from, :ok},
+           {:next_event, :internal, :notify_review},
+           {:next_event, :internal, :notify_players}
+         ]
+         |> wrap_timeout()}
     end
   end
 

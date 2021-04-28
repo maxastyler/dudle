@@ -42,6 +42,15 @@ defmodule DudleWeb.GameLive do
     Presence.list(presence_topic(socket)) |> Map.keys() |> Enum.sort()
   end
 
+  defp add_review_update(socket, {{_, review_element} = rs, _} = review_update) do
+    assign(socket,
+      state: {:playing, :reviewing},
+      reset_review_state: review_element == 0,
+      review_data: [review_update],
+      review_state: rs
+    )
+  end
+
   defp get_state(socket) do
     case GameClient.get_state(socket.assigns.room, socket.assigns.name) do
       {:lobby, _} ->
@@ -50,14 +59,8 @@ defmodule DudleWeb.GameLive do
       {{:playing, :submitting} = state, data} ->
         assign(socket, state: state, prompt: data, text_data: "", submitted: false)
 
-      {{:playing, :reviewing} = state, review_state, review_prompt} ->
-        # TODO: refactor this into a function (cause it's used in two places)
-        assign(socket,
-          state: state,
-          reset_review_state: true,
-          review_state: review_state,
-          review_data: [{review_state, review_prompt}]
-        )
+      {{:playing, :reviewing}, review_update} ->
+        add_review_update(socket, review_update)
     end
   end
 
@@ -141,16 +144,10 @@ defmodule DudleWeb.GameLive do
   end
 
   def handle_info(
-        %{event: "review_update", payload: {{_, review_element} = review_state, prompt}},
+        %{event: "review_update", payload: review_update},
         socket
       ) do
-    {:noreply,
-     assign(socket,
-       review_data: [{review_state, prompt}],
-       review_state: review_state,
-       reset_review_state: review_element == 0,
-       state: {:playing, :reviewing}
-     )}
+    {:noreply, add_review_update(socket, review_update)}
   end
 
   def handle_info(
@@ -211,6 +208,16 @@ defmodule DudleWeb.GameLive do
 
   def handle_event("next_review_state", _, socket) do
     GameClient.reveal_next(socket.assigns.room)
+    {:noreply, socket}
+  end
+
+  def handle_event("text_correct", %{"player-choice" => choice}, socket) do
+    GameClient.text_correct(socket.assigns.room, (if choice == "true", do: true, else: false))
+    {:noreply, socket}
+  end
+
+  def handle_event("vote", %{"player-choice" => player}, socket) do
+    GameClient.vote(socket.assigns.room, player)
     {:noreply, socket}
   end
 end

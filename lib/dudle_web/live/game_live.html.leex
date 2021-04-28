@@ -20,20 +20,46 @@
         <% :lobby ->  %>
             <h2>In lobby</h2>
             <button phx-click="start_game">Start game</button>
-            <% {:playing, :submitting} -> %>
-                <%= live_component @socket, DudleWeb.PromptComponent, text_data: @text_data, prompt: @prompt%>
-                <p>Submitted: <%= @submitted %></p>
-                <% {:playing, :reviewing} -> %>
+        <% {:playing, :submitting} -> %>
+            <%= live_component @socket, DudleWeb.PromptComponent, text_data: @text_data, prompt: @prompt%>
+            <p>Submitted: <%= @submitted %></p>
+
+        <% {:playing, :reviewing} -> %>
                     <div id="review_items" phx-update="<%= if @reset_review_state, do: "replace", else: "append" %>">
-                    <%= for {{player, elem}, {prompt_type, prompt_player, prompt}} <- @review_data do %>
-                        <%= live_component @socket, DudleWeb.RevealComponent, name: prompt_player, id: elem, prompt_type: prompt_type, prompt: prompt %>
-                    <% end %>
+                        <%= for {{player, elem}, other} <- @review_data do %>
+                            <%= case other do %>
+                                <% :voting ->  %>
+                                    <h2>Voting</h2>
+                                <% {prompt_type, prompt_player, prompt} -> %>
+                                    <%= live_component @socket, DudleWeb.RevealComponent, name: prompt_player,
+                                    id: elem, prompt_type: prompt_type, prompt: prompt %>                                                         <% end %>
+                        <% end %>
                     </div>
-                    <%= if @name == elem(@review_state, 0) do %>
-                    <div>
-                        <button phx-click="next_review_state">Next</button>
-                    </div>
-                    <% end %>
+                    <%= case @review_state do %>
+                        <% {player, {:text_correct, {first_prompt, last_prompt}}} -> %>
+                            <h3>Reviewing player <%= player %></h3>
+                            <%= if @name == player do %>
+                                <h3>Is this text close enough?</h3>
+                                
+                                <button phx-click="text_correct" phx-value-player-choice="true">Correct</button>
+                                <button phx-click="text_correct" phx-value-player-choice="false">Incorrect</button>
+                            <% end %>
+                            <% {player, {:vote, players}} -> %>
+                                <%= if @name == player do %>
+                                    <%= for p <- players do %>
+                                        <button phx-click="vote" phx-value-player-choice="<%= p %>"><%= p %></button>
+                                    <% end %>
+                                <% else %>
+                                    <h2><%= player %> is choosing right now</h2>
+                                <% end %>
+                        <% {player, _} -> %>
+                            <%= if @name == elem(@review_state, 0) do %>
+                                <div>
+                                    <button phx-click="next_review_state">Next</button>
+                                </div>
+                            <% end %>
+                        <% end %>
+
                     <% _ -> %> <p>Other state</p>
         <% end %>
                 <% end %>
