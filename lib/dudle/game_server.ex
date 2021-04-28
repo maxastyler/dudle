@@ -34,7 +34,6 @@ defmodule Dudle.GameServer do
   alias DudleWeb.Endpoint
   import Access, only: [key: 1, key: 2, at: 1]
 
-  @prompts ["Prompt 1", "Stinky prompt", "An incredibly cool picture", "Very very cool"]
   @server_timeout 60 * 15 * 1000
 
   defp wrap_timeout(xs) when is_list(xs), do: [{:timeout, @server_timeout, :any} | xs]
@@ -127,7 +126,7 @@ defmodule Dudle.GameServer do
          {:reply, from, {:error, "Can't start game with less than 2 players"}} |> wrap_timeout()}
 
       :else ->
-        with {:ok, game} <- Game.new_game(players, @prompts) do
+        with {:ok, game} <- Game.new_game(players, Dudle.Prompts.get_prompts()) do
           new_data =
             Map.put(data, :game, game)
             |> Map.update!(
