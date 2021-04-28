@@ -7,6 +7,9 @@ defmodule DudleWeb.PlayersComponent do
     <%= for {player_name, player_data} <- @players do %>
     <h4 style="<%= if @state == :lobby or player_data[:online], do: "color:black", else: "color:grey" %>">
 <%= player_name %></h4>
+<%= if player_data[:score] do %>
+<h4>Score: <%= player_data[:score]%></h4>
+<% end %>
 <h5><%= if @state == {:playing, :submitting}, do: "Submitted: #{player_data[:submitted] == true}"%></h5>
     <% end %>
     """

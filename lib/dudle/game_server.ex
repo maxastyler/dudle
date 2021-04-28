@@ -40,28 +40,38 @@ defmodule Dudle.GameServer do
   defp wrap_timeout(xs) when is_list(xs), do: [{:timeout, @server_timeout, :any} | xs]
   defp wrap_timeout(term), do: [term, {:timeout, @server_timeout, :any}]
 
-  defp notify_of_change(%{room: room} = _data) do
-    DudleWeb.Endpoint.broadcast("game:#{room}", "data_update", :data_update)
-    :ok
-  end
-
   defp reset_player_submission_state(data) do
     update_in(data, [:players], fn ps ->
       for {p, m} <- ps, into: %{}, do: {p, put_in(m, [:submitted], false)}
     end)
   end
 
-  defp notify_review_change(%{room: room, game: game} = _data) do
+  defp construct_review_state_message(round) do
+    cond do
+      elem(round.review_state, 1) |> is_number() ->
+        {round.review_state, Round.get_review_prompt(round)}
+
+      :else ->
+        round.review_state
+    end
+  end
+
+  defp notify_data_update(%{room: room} = _data) do
+    DudleWeb.Endpoint.broadcast("game:#{room}", "data_update", :data_update)
+    :ok
+  end
+
+  defp notify_review_update(%{room: room, game: game} = _data) do
     DudleWeb.Endpoint.broadcast(
       "game:#{room}",
       "review_update",
-      {game.round.review_state, Round.get_review_prompt(game.round)}
+      construct_review_state_message(game.round)
     )
 
     :ok
   end
 
-  defp notify_player_change(%{players: players, room: room} = _data) do
+  defp notify_player_update(%{players: players, room: room} = _data) do
     DudleWeb.Endpoint.broadcast(
       "game:#{room}",
       "player_update",
@@ -107,16 +117,19 @@ defmodule Dudle.GameServer do
 
   @impl true
   def handle_event({:call, from}, :start_game, :lobby, %{players: players} = data) do
-    IO.puts("Start game")
-
-    case map_size(players) do
-      0 ->
+    cond do
+      map_size(players) < 2 ->
         {:keep_state_and_data,
-         {:reply, from, {:error, "Can't start game with no players"}} |> wrap_timeout()}
+         {:reply, from, {:error, "Can't start game with less than 2 players"}} |> wrap_timeout()}
 
-      _ ->
+      :else ->
         with {:ok, game} <- Game.new_game(players, @prompts) do
-          new_data = Map.put(data, :game, game)
+          new_data =
+            Map.put(data, :game, game)
+            |> Map.update!(
+              :players,
+              &for({p, v} <- &1, into: %{}, do: {p, Map.put(v, :score, 0)})
+            )
 
           {:next_state, {:playing, :submitting}, new_data,
            [{:reply, from, :ok}, {:next_event, :internal, :notify}] |> wrap_timeout()}
@@ -183,8 +196,7 @@ defmodule Dudle.GameServer do
         data
       ) do
     {:keep_state_and_data,
-     {:reply, from,
-      {state, data.game.round.review_state, Round.get_review_prompt(data.game.round)}}
+     {:reply, from, {state, construct_review_state_message(data.game.round)}}
      |> wrap_timeout()}
   end
 
@@ -241,22 +253,28 @@ defmodule Dudle.GameServer do
   end
 
   def handle_event(:internal, :notify, _state, data) do
-    notify_of_change(data)
+    notify_data_update(data)
     {:keep_state_and_data, [] |> wrap_timeout()}
   end
 
   def handle_event(:internal, :notify_review, _state, data) do
-    notify_review_change(data)
+    notify_review_update(data)
     {:keep_state_and_data, [] |> wrap_timeout()}
   end
 
   def handle_event(:internal, :notify_players, _state, data) do
-    notify_player_change(data)
+    notify_player_update(data)
     {:keep_state_and_data, [] |> wrap_timeout()}
   end
 
-  def handle_event({:call, from}, :next_review_state, {:playing, :reviewing}, data) do
-    case Round.get_next_review_state(data.game.round) do
+  def handle_event(
+        {:call, from},
+        :next_review_state,
+        {:playing, :reviewing},
+        %{game: %{round: %{review_state: {_, x}}, players: players}} = data
+      )
+      when is_number(x) do
+    case Round.get_next_review_state(data.game.round, players) do
       :finished ->
         with {:ok, new_round} <- Round.new_round(data.game.players, data.game.prompts),
              new_data <-
