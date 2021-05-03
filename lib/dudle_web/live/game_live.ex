@@ -3,7 +3,6 @@ defmodule DudleWeb.GameLive do
   alias Dudle.Presence
   alias Phoenix.LiveView.Socket
   alias Dudle.GameClient
-  alias Dudle.GameServer
 
   @default_colour "#000000"
 
