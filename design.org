@@ -36,6 +36,7 @@
   - Server State (just a map)
     - game: Game
     - presence_players: [player]
+    - room: String
       
 * Events
   - presence_diff
