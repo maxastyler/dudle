@@ -1,0 +1,57 @@
+* states
+  - :lobby
+  - :submit
+  - :review
+  - :correct
+  - :vote
+  - :end
+
+* Data types
+  - Submission
+    - types: :image | :text
+    - submitter: string | :initial
+    - data
+
+  - Round
+    The state of a single round
+    - prompts: %{initial_player => [Submission]}
+    - results: %{player => %{favourite: player, correct: boolean()}}
+
+  - Options
+    The state of the options for the game
+    - max_score: integer() | nil 
+    - max_rounds: integer() | nil
+    - avoid_prompt_repetition: boolean()
+  
+  - Game
+    - rounds: [Round]
+    - scores: %{player => score}
+    - round_submissions: %{player => [Submission]}
+    - turn_submissions: %{player => Submission}
+    - prompts: %MapSet{prompts}
+    - players: [player]
+    - player_adjacency: %{player => player}
+    - options: Options
+
+  - Server State (just a map)
+    - game: Game
+    - presence_players: [player]
+      
+* Events
+  - presence_diff
+    Add in the current players to data, and broadcast this difference
+  - start_game
+    If in lobby, put a new game struct into the server map and play
+  - get_state
+    Return to the caller the relevant state
+  - submit_prompt
+    Add the prompt to the game's turn_submissions, if this is full, add them to the round and
+    start a new turn
+  - broadcast_state
+    Broadcast the current state of the server
+  - advance_review_state
+    Go to the next review state
+  - submit_correct
+    Submit whether the current text is correct
+  - submit_favourite
+    submit the player's favourite submission for the given round
