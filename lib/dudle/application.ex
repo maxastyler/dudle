@@ -7,6 +7,9 @@ defmodule Dudle.Application do
 
   def start(_type, _args) do
     children = [
+      # start the game server registry and supervisor
+      {Registry, keys: :unique, name: Dudle.GameRegistry},
+      {DynamicSupervisor, strategy: :one_for_one, name: Dudle.GameSupervisor},
       # Start the Ecto repository
       Dudle.Repo,
       # Start the Telemetry supervisor
@@ -14,9 +17,9 @@ defmodule Dudle.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Dudle.PubSub},
       # Start the Endpoint (http/https)
-      DudleWeb.Endpoint
-      # Start a worker by calling: Dudle.Worker.start_link(arg)
-      # {Dudle.Worker, arg}
+      DudleWeb.Endpoint,
+      # Start the presence server
+      Dudle.Presence
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
