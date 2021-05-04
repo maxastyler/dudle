@@ -37,6 +37,7 @@ defmodule Dudle.MixProject do
       {:phoenix_ecto, "~> 4.1"},
       {:ecto_sql, "~> 3.4"},
       {:postgrex, ">= 0.0.0"},
+      {:gen_state_machine, "~> 3.0"},
       {:typed_struct, "~> 0.2.1"},
       {:typed_struct_lens, "~> 0.1.0"},
       {:lens, "~> 0.9"},
