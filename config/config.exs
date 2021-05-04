@@ -13,10 +13,10 @@ config :dudle,
 # Configures the endpoint
 config :dudle, DudleWeb.Endpoint,
   url: [host: "localhost"],
-  secret_key_base: "O9obgv7LCE8HIkueIdEAmzI33p9xpc/W1RBV34zwvXm4liWPg3W949AvUFqrGema",
+  secret_key_base: "xp4Jh9+YRs6cIbUONb9F83BQeTdION4MfIiEu+5dxUNXpjGo6N3p8ZJ5DR+0wsbl",
   render_errors: [view: DudleWeb.ErrorView, accepts: ~w(html json), layout: false],
   pubsub_server: Dudle.PubSub,
-  live_view: [signing_salt: "dF1zJgVg"]
+  live_view: [signing_salt: "MXAvgbnc"]
 
 # Configures Elixir's Logger
 config :logger, :console,

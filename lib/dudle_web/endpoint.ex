@@ -7,7 +7,7 @@ defmodule DudleWeb.Endpoint do
   @session_options [
     store: :cookie,
     key: "_dudle_key",
-    signing_salt: "79W0Bqtq"
+    signing_salt: "P3LGZLsO"
   ]
 
   socket "/socket", DudleWeb.UserSocket,

@@ -7,8 +7,6 @@ defmodule Dudle.Application do
 
   def start(_type, _args) do
     children = [
-      {Registry, keys: :unique, name: Dudle.GameRegistry},
-      {DynamicSupervisor, strategy: :one_for_one, name: Dudle.GameSupervisor},
       # Start the Ecto repository
       Dudle.Repo,
       # Start the Telemetry supervisor
@@ -16,7 +14,6 @@ defmodule Dudle.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: Dudle.PubSub},
       # Start the Endpoint (http/https)
-      Dudle.Presence,
       DudleWeb.Endpoint
       # Start a worker by calling: Dudle.Worker.start_link(arg)
       # {Dudle.Worker, arg}
