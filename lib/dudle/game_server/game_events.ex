@@ -146,7 +146,8 @@ defmodule Dudle.GameServer.Events do
         {:keep_state_and_data, [{:reply, from, {:error, "Cannot join: name is too long"}}]}
 
       :else ->
-        {:keep_state, %{data | presence_players: MapSet.put(players, player)}, [{:reply, from, {:ok, player}}]}
+        {:keep_state, %{data | presence_players: MapSet.put(players, player)},
+         [{:reply, from, {:ok, player}}]}
     end
   end
 
@@ -274,6 +275,22 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, {:error, "Not in a reviewing state"}}]}
   end
 
+  @spec put_in_results(%{game: Game.t()}, String.t(), atom(), any()) :: %{game: Game.t()}
+  defp put_in_results(data, player, key, value) do
+    put_in(
+      data,
+      [
+        Lens.key(:game)
+        |> Game.rounds()
+        |> Lens.at(0)
+        |> Round.results()
+        |> Lens.key(player)
+        |> Lens.key(key)
+      ],
+      value
+    )
+  end
+
   def submit_correct(
         from,
         {:correct, {player, {_, %Prompt{submitter: submitter}}}},
@@ -290,18 +307,7 @@ defmodule Dudle.GameServer.Events do
         other_players = Enum.filter(players, &(&1 != player))
 
         new_data =
-          put_in(
-            data,
-            [
-              Lens.key(:game)
-              |> Game.rounds()
-              |> Lens.at(0)
-              |> Round.results()
-              |> Lens.key(player)
-              |> Lens.key(:correct)
-            ],
-            correct
-          )
+          put_in_results(data, player, :correct, correct)
           |> add_to_player_score(submitter, if(correct, do: 3, else: 0))
 
         {:next_state, {:vote, {player, other_players}}, new_data,
@@ -356,18 +362,7 @@ defmodule Dudle.GameServer.Events do
 
       :else ->
         new_data =
-          put_in(
-            data,
-            [
-              Lens.key(:game)
-              |> Game.rounds()
-              |> Lens.at(0)
-              |> Round.results()
-              |> Lens.key(player)
-              |> Lens.key(:favourite)
-            ],
-            vote
-          )
+          put_in_results(data, player, :favourite, vote)
           |> add_to_player_score(submitter, 1)
 
         players_left = new_data.players_left
