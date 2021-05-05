@@ -215,4 +215,12 @@ defmodule Dudle.GameClientTest do
     assert {:ok, nil} = GameClient.submit_vote(pid, second_player, first_player)
     assert {:end, %{"player_1" => _, "player_2" => _}} = GameClient.get_state(pid, first_player)
   end
+
+  test "joining the game works as expected", %{pid: pid} do
+    assert {:ok, "hiyi"} == GameClient.join_game(pid, "hiyi")
+    assert {:error, _} = GameClient.join_game(pid, "hiyi")
+    assert {:ok, "hoyo"} == GameClient.join_game(pid, "hoyo")
+    n = String.duplicate("h", GameServer.player_name_limit + 1)
+    assert {:error, _} = GameClient.join_game(pid, n)
+  end
 end

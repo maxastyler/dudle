@@ -23,7 +23,7 @@ defmodule Dudle.GameClient do
   @doc """
   Try joining the game with the given player name
   """
-  spec join_game(GenServer.server(), String.t()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec join_game(GenServer.server(), String.t()) :: {:ok, String.t()} | {:error, String.t()}
   def join_game(server, player) do
     GenStateMachine.call(server, {:join_game, player})
   end
