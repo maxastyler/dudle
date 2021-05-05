@@ -92,9 +92,11 @@ defmodule Dudle.GameClientTest do
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
     assert {:error, "not in submitting state"} = GameClient.submit_prompt(pid, prompt)
     Process.sleep(100)
+
     new_map =
       Enum.map(["player_1", "player_2"], &{&1, %{online: true, score: 0}})
       |> Map.new()
+
     assert new_map == GameClient.get_players(pid)
     [first_player, second_player] = (:sys.get_state(pid) |> elem(1)).game.players
     assert {:error, _} = GameClient.advance_review_state(pid, "not in the game player")
@@ -220,7 +222,7 @@ defmodule Dudle.GameClientTest do
     assert {:ok, "hiyi"} == GameClient.join_game(pid, "hiyi")
     assert {:error, _} = GameClient.join_game(pid, "hiyi")
     assert {:ok, "hoyo"} == GameClient.join_game(pid, "hoyo")
-    n = String.duplicate("h", GameServer.player_name_limit + 1)
+    n = String.duplicate("h", GameServer.player_name_limit() + 1)
     assert {:error, _} = GameClient.join_game(pid, n)
   end
 end
