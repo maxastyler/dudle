@@ -32,7 +32,11 @@ defmodule Dudle.GameServer.Events do
   end
 
   def start_game(from, :lobby, %{presence_players: players} = data) do
-    new_data = %{data | game: Game.new(players)}
-    {:next_state, :submit, new_data, [{:reply, from, {:ok, :server_started}}]}
+    with {:ok, game} <- Game.new(players) do
+      new_data = %{data | game: game}
+      {:next_state, :submit, new_data, [{:reply, from, {:ok, :server_started}}]}
+    else
+      {:error, e} -> {:keep_state_and_data, [{:reply, from, {:error, e}}]}
+    end
   end
 end

@@ -51,8 +51,14 @@ defmodule Dudle.GameClientTest do
     }
   end
 
+  test "game doesn't start with less than two players", %{pid: pid, player_1: player_1} do
+    Agent.stop(player_1)
+    Process.sleep(200)
+    assert {:error, _} = GameClient.start_game(pid)
+  end
+
   test "valid game can be played", %{pid: pid, room: room} do
-    GameClient.start_game(pid)
+    assert {:ok, :server_started} = GameClient.start_game(pid)
     assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
   end
 end
