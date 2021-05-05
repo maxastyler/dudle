@@ -5,14 +5,14 @@ defmodule Dudle.GameClient do
 
   alias Dudle.GameServer
 
-  defp via(name) do
-    {:via, Registry, {Dudle.GameRegistry, name}}
+  defp via(room) do
+    {:via, Registry, {Dudle.GameRegistry, room}}
   end
 
   def start_server(room) do
     DynamicSupervisor.start_child(
       Dudle.GameSupervisor,
-      {Dudle.GameServer, data: %{room: room}, name: via(name)}
+      {Dudle.GameServer, data: %{room: room}, name: via(room)}
     )
   end
 
