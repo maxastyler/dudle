@@ -5,6 +5,14 @@ defmodule Dudle.GameClient do
 
   alias Dudle.GameServer
 
+  defp via(name) do
+    {:via, Registry, {Dudle.GameRegistry, name}}
+  end
+
+  # def start_server(server) do
+  #   Super
+  # end
+
   def start_game(server) do
     GenStateMachine.call(server, :start_game)
   end
