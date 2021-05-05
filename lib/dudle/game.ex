@@ -16,4 +16,6 @@ defmodule Dudle.Game do
     field :player_adjacency, %{String.t() => String.t()}
     field :options, Options.t()
   end
+
+  def new(players, prompts)
 end
