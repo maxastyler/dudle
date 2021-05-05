@@ -9,9 +9,12 @@ defmodule Dudle.GameClient do
     {:via, Registry, {Dudle.GameRegistry, name}}
   end
 
-  # def start_server(server) do
-  #   Super
-  # end
+  def start_server(room) do
+    DynamicSupervisor.start_child(
+      Dudle.GameSupervisor,
+      {Dudle.GameServer, data: %{room: room}, name: via(name)}
+    )
+  end
 
   def start_game(server) do
     GenStateMachine.call(server, :start_game)
