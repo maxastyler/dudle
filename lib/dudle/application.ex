@@ -11,7 +11,7 @@ defmodule Dudle.Application do
       {Registry, keys: :unique, name: Dudle.GameRegistry},
       {DynamicSupervisor, strategy: :one_for_one, name: Dudle.GameSupervisor},
       # Start the Ecto repository
-      Dudle.Repo,
+      # Dudle.Repo,
       # Start the Telemetry supervisor
       DudleWeb.Telemetry,
       # Start the PubSub system
