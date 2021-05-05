@@ -3,7 +3,7 @@ defmodule Dudle.GameServer.Events do
   This module contains the implementation for all of the game server events
   """
   alias DudleWeb.Endpoint
-  alias Dudle.{Presence, Game, Prompt, Round, Options}
+  alias Dudle.{Presence, Game, Prompt, Round, Options, GameServer}
 
   @doc """
   Get a MapSet of the presence players in the room
@@ -134,6 +134,20 @@ defmodule Dudle.GameServer.Events do
 
   def get_state(from, :end, %{game: %{scores: scores}} = _data, _player) do
     {:keep_state_and_data, [{:reply, from, {:end, scores}}]}
+  end
+
+  def join_game(from, state, %{presence_players: players} = data, player) do
+    cond do
+      player in players ->
+        {:keep_state_and_data,
+         [{:reply, from, {:error, "Cannot join: someone is using that name already"}}]}
+
+      String.length(player) > GameServer.player_name_limit() ->
+        {:keep_state_and_data, [{:reply, from, {:error, "Cannot join: name is too long"}}]}
+
+      :else ->
+        {:keep_state, %{data | presence_players: MapSet.put(players, player)}, [{:reply, from, {:ok, player}}]}
+    end
   end
 
   def start_game(

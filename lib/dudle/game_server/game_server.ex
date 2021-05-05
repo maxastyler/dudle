@@ -6,6 +6,8 @@ defmodule Dudle.GameServer do
 
   @server_timeout 10 * 60 * 1000
 
+  def player_name_limit, do: 50
+
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
     GenStateMachine.start_link(__MODULE__, data, opts)
@@ -55,6 +57,10 @@ defmodule Dudle.GameServer do
 
   def handle_event({:call, from}, :get_players, state, data) do
     get_players(from, state, data)
+  end
+
+  def handle_event({:call, from}, {:join_game, player}, state, data) do
+    join_game(from, state, data, player)
   end
 
   def handle_event({:call, from}, :start_game, state, data) do
