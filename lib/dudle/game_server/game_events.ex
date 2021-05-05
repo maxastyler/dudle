@@ -54,12 +54,36 @@ defmodule Dudle.GameServer.Events do
     :keep_state_and_data
   end
 
+  defp format_review_state({:review, {_, e} = inner} = _state, %{room: room} = data) do
+    {
+      :review,
+      inner,
+      get_in(data, [:game, Game.rounds() |> Lens.at(0) |> Round.prompts() |> Lens.at(e)])
+      # get_in(data, [:game, :rounds, Access.at(0), :prompts, Access.at(e)])
+    }
+  end
+
+  def broadcast_state({:review, {player, element}} = state, %{room: room} = data) do
+    Endpoint.broadcast(
+      "game:#{room}",
+      "broadcast_state",
+      {:review, {player, element},
+       get_in(data, [:game, Game.rounds() |> Lens.at(0) |> Round.prompts()])}
+    )
+
+    :keep_state_and_data
+  end
+
   def get_state(from, :lobby, _data, _player) do
     {:keep_state_and_data, [{:reply, from, :lobby}]}
   end
 
   def get_state(from, :submit, %{game: %{player_prompts: player_prompts}} = data, player) do
     {:keep_state_and_data, [{:reply, from, {:submit, player_prompts[player]}}]}
+  end
+
+  def get_state(from, {:review, _} = state, data, _player) do
+    {:keep_state_and_data, [{:reply, from, format_review_state(state, data)}]}
   end
 
   def start_game(from, :lobby, %{presence_players: players} = data) do
@@ -122,7 +146,7 @@ defmodule Dudle.GameServer.Events do
      |> put_in([:game, Game.player_prompts()], new_player_prompts)
      |> put_in([:game, Game.turn_submissions()], %{}),
      cond do
-       new_round_submissions |> Enum.map(fn {_, p} -> length(p) end) |> Enum.min() >=
+       new_round_submissions |> Enum.map(fn {_, p} -> length(p) end) |> Enum.min() >
            map_size(new_round_submissions) ->
          [{:next_event, :internal, :move_to_reviewing_state}]
 
@@ -133,8 +157,15 @@ defmodule Dudle.GameServer.Events do
 
   def add_submissions_to_round(_state, _data), do: :keep_state_and_data
 
-  def move_to_reviewing_state(:submit, data) do
-    {:next_state, {:review, }}
+  def move_to_reviewing_state(:submit, %{game: %{players: players}} = data) do
+    [first_player | reviewing_players] = players
+
+    new_data =
+      update_in(data, [:game], &Game.put_submissions_into_rounds/1)
+      |> put_in([:players_left], reviewing_players)
+
+    {:next_state, {:review, {first_player, 0}}, new_data,
+     [{:next_event, :internal, :broadcast_state}]}
   end
 
   def move_to_reviewing_state(_state, _data), do: :keep_state_and_data

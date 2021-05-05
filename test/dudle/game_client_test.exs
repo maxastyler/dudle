@@ -1,7 +1,7 @@
 defmodule Dudle.GameClientTest do
   use ExUnit.Case
 
-  alias Dudle.{GameClient, GameServer, Game, Prompt}
+  alias Dudle.{GameClient, GameServer, Game, Prompt, Round}
 
   setup do
     room = "test_room"
@@ -84,6 +84,9 @@ defmodule Dudle.GameClientTest do
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
     prompt = Prompt.new(:image, "player_2", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
-    IO.inspect(:sys.get_state(pid))
+    assert {:error, "not in submitting state"} = GameClient.submit_prompt(pid, prompt)
+    Process.sleep(100)
+    # GameClient.get_state(pid, "player_1")
+    IO.inspect(get_in(:sys.get_state(pid), [Lens.at(1) |> Lens.key(:game) |> Game.rounds |> Lens.at(0) |> Round.prompts()]))
   end
 end

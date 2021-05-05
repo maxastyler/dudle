@@ -60,12 +60,12 @@ defmodule Dudle.Game do
            scores: for(p <- player_list, into: %{}, do: {p, 0})
          }}
     end
-          end
+  end
 
   @doc """
   Put the round submissions into the rounds list
   """
-  def put_submissions_into_rounds(game) do
-    game
+  def put_submissions_into_rounds(%{round_submissions: round_submissions} = game) do
+    update_in(game, [rounds], &[Round.create_from_round_submissions(round_submissions) | &1])
   end
 end
