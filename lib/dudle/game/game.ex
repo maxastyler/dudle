@@ -10,7 +10,7 @@ defmodule Dudle.Game do
 
     field :rounds, [Round.t()], default: []
     field :scores, %{String.t() => integer()}
-    field :round_submissions, %{String.t() => [Prompt.t()]}, default: %{}
+    field :round_submissions, %{String.t() => [Prompt.t()]}
     field :turn_submissions, %{String.t() => Prompt.t()}, default: %{}
     field :player_prompts, %{String.t() => Prompt.t()}
     field :prompts, MapSet.t(Prompt.t())
@@ -54,9 +54,18 @@ defmodule Dudle.Game do
            player_adjacency: player_adjacency,
            players: player_list,
            player_prompts: player_prompts,
+           round_submissions:
+             for({player, prompt} <- player_prompts, into: %{}, do: {player, [prompt]}),
            prompts: prompts,
            scores: for(p <- player_list, into: %{}, do: {p, 0})
          }}
     end
+          end
+
+  @doc """
+  Put the round submissions into the rounds list
+  """
+  def put_submissions_into_rounds(game) do
+    game
   end
 end

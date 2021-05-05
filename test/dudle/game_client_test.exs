@@ -76,5 +76,14 @@ defmodule Dudle.GameClientTest do
 
     prompt = Prompt.new(:image, "player_1", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:image, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    Process.sleep(100)
+    prompt = Prompt.new(:image, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:image, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    IO.inspect(:sys.get_state(pid))
   end
 end

@@ -13,9 +13,23 @@ defmodule Dudle.GameServer.Events do
     Presence.list("presence:#{room}") |> Map.keys() |> MapSet.new()
   end
 
-  @spec construct_players_map(%{presence_players: MapSet.t(String.t())}) :: %{String.t() => %{}}
-  def construct_players_map(%{presence_players: presence_players, game: nil} = _data) do
+  @spec construct_players_map(atom(), %{presence_players: MapSet.t(String.t())}) :: %{
+          String.t() => %{}
+        }
+  def construct_players_map(:lobby, %{presence_players: presence_players, game: nil} = _data) do
     Enum.map(presence_players, &{&1, %{online: true}}) |> Map.new()
+  end
+
+  def construct_players_map(
+        :submit,
+        %{
+          presence_players: presence_players,
+          game: %{players: players, turn_submissions: turn_submissions}
+        } = _data
+      ) do
+    Enum.map(players, fn p ->
+      {p, %{online: p in presence_players, submitted: p in turn_submissions}}
+    end)
   end
 
   def presence_diff(%{room: room} = data) do
@@ -26,7 +40,7 @@ defmodule Dudle.GameServer.Events do
   end
 
   def broadcast_players(state, %{room: room} = data) do
-    Endpoint.broadcast("game:#{room}", "broadcast_players", construct_players_map(data))
+    Endpoint.broadcast("game:#{room}", "broadcast_players", construct_players_map(state, data))
     :keep_state_and_data
   end
 
@@ -74,13 +88,54 @@ defmodule Dudle.GameServer.Events do
            [{:reply, from, {:ok, prompt}}, {:next_event, :internal, :add_submissions_to_round}]
 
          :else ->
-           [{:reply, from, {:ok, prompt}}]
+           [{:reply, from, {:ok, prompt}}, {:next_event, :internal, :broadcast_players}]
        end}
     else
       {:keep_state_and_data, [{:reply, from, {:error, "submitting player not in game"}}]}
     end
   end
 
-  def submit_prompt(from, _state, _data, _prompt),
-    do: {:keep_state_and_data, [{:reply, from, {:error, "not in submitting state"}}]}
+  def submit_prompt(from, _state, _data, _prompt) do
+    {:keep_state_and_data, [{:reply, from, {:error, "not in submitting state"}}]}
+  end
+
+  def add_submissions_to_round(
+        :submit,
+        %{
+          game: %{
+            turn_submissions: turn_submissions,
+            round_submissions: round_submissions,
+            player_adjacency: player_adjacency
+          }
+        } = data
+      ) do
+    new_round_submissions =
+      for {player, prompt} <- turn_submissions, reduce: round_submissions do
+        rs -> Map.update!(rs, player, &[prompt | &1])
+      end
+
+    new_player_prompts =
+      for {player, prompt} <- turn_submissions, into: %{}, do: {player_adjacency[player], prompt}
+
+    {:keep_state,
+     put_in(data, [:game, Game.round_submissions()], new_round_submissions)
+     |> put_in([:game, Game.player_prompts()], new_player_prompts)
+     |> put_in([:game, Game.turn_submissions()], %{}),
+     cond do
+       new_round_submissions |> Enum.map(fn {_, p} -> length(p) end) |> Enum.min() >=
+           map_size(new_round_submissions) ->
+         [{:next_event, :internal, :move_to_reviewing_state}]
+
+       :else ->
+         []
+     end}
+  end
+
+  def add_submissions_to_round(_state, _data), do: :keep_state_and_data
+
+  def move_to_reviewing_state(:submit, data) do
+    {:next_state, {:review, }}
+  end
+
+  def move_to_reviewing_state(_state, _data), do: :keep_state_and_data
 end

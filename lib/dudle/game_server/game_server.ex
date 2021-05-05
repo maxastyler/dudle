@@ -35,6 +35,14 @@ defmodule Dudle.GameServer do
     broadcast_state(state, data)
   end
 
+  def handle_event(:internal, :add_submissions_to_round, state, data) do
+    add_submissions_to_round(state, data)
+  end
+
+  def handle_event(:internal, :move_to_reviewing_state, state, data) do
+    move_to_reviewing_state(state, data)
+  end
+
   def handle_event({:call, from}, {:get_state, player}, state, data) do
     get_state(from, state, data, player)
   end

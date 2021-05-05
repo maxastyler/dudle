@@ -10,4 +10,8 @@ defmodule Dudle.Round do
     field :prompts, %{String.t() => [Submission.t()]}
     field :results, %{String.t() => %{favourite: String.t(), correct: boolean()}}
   end
+
+  def from_round_submissions(round_submissions) do
+    
+  end
 end
