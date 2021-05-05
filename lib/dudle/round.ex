@@ -1,14 +1,14 @@
 defmodule Dudle.Round do
   use TypedStruct
 
-  alias Dudle.Submission
+  alias Dudle.{Prompt}
 
   typedstruct enforce: true do
     plugin TypedStructLens
     @typedoc "A round of dudle"
 
-    field :prompts, %{String.t() => [Submission.t()]}
-    field :results, %{String.t() => %{favourite: String.t(), correct: boolean()}}, default: %{}
+    field :prompts, %{String.t() => [Prompt.t()]}
+    field :results, %{String.t() => %{favourite: String.t(), correct: boolean()}}
   end
 
   defp mod(x, n) do
@@ -28,12 +28,12 @@ defmodule Dudle.Round do
   @doc """
   Create a round struct from the submissions for a given round
   """
-  @spec create_from_round_submissions(%{String.t() => [Submission.t()]}) :: __MODULE__.t()
+  @spec create_from_round_submissions(%{String.t() => [Prompt.t()]}) :: __MODULE__.t()
   def create_from_round_submissions(round_submissions) do
     reversed = for {p, s} <- round_submissions, into: %{}, do: {p, Enum.reverse(s)}
 
     prompts =
-      for [_, {_, player, _} | _] = v <-
+      for [_, %Prompt{submitter: player} | _] = v <-
             Enum.map(Map.keys(round_submissions), &reversed[&1])
             |> Enum.zip()
             |> Enum.zip([0 | Enum.to_list(0..map_size(round_submissions))])
@@ -42,10 +42,8 @@ defmodule Dudle.Round do
             |> Enum.map(&Tuple.to_list(&1)),
           into: %{} do
         {player, v}
-            end
-            IO.puts("THIS IS PROMPTS:\n\n\n")
-            IO.inspect(map_size(round_submissions))
+      end
 
-    %__MODULE__{prompts: prompts}
+    %__MODULE__{prompts: prompts, results: Map.keys(prompts) |> Enum.map(&{&1, %{}}) |> Map.new()}
   end
 end

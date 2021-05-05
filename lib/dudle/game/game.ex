@@ -63,6 +63,22 @@ defmodule Dudle.Game do
   end
 
   @doc """
+  Reset the game to new round status
+  """
+  @spec new_round(__MODULE__.t()) :: __MODULE__.t()
+  def new_round(%{players: players, prompts: prompts} = game) do
+    new_prompts = deal_prompts(players, prompts)
+
+    new_round_submissions =
+      for({player, prompt} <- new_prompts, into: %{}, do: {player, [prompt]})
+
+    game
+    |> put_in([round_submissions], new_round_submissions)
+    |> put_in([turn_submissions], %{})
+    |> put_in([player_prompts], new_prompts)
+  end
+
+  @doc """
   Put the round submissions into the rounds list
   """
   def put_submissions_into_rounds(%{round_submissions: round_submissions} = game) do

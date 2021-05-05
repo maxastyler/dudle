@@ -74,19 +74,43 @@ defmodule Dudle.GameClientTest do
     assert {:submit, %Prompt{type: text, submitter: :initial}} =
              GameClient.get_state(pid, "player_2")
 
-    prompt = Prompt.new(:image, "player_1", "im")
+    prompt = Prompt.new(:text, "player_1", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
-    prompt = Prompt.new(:image, "player_2", "im")
+    prompt = Prompt.new(:text, "player_2", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
 
     Process.sleep(100)
-    prompt = Prompt.new(:image, "player_1", "im")
+    prompt = Prompt.new(:text, "player_1", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
-    prompt = Prompt.new(:image, "player_2", "im")
+    prompt = Prompt.new(:text, "player_2", "im")
     assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
     assert {:error, "not in submitting state"} = GameClient.submit_prompt(pid, prompt)
     Process.sleep(100)
-    # GameClient.get_state(pid, "player_1")
-    IO.inspect(get_in(:sys.get_state(pid), [Lens.at(1) |> Lens.key(:game) |> Game.rounds |> Lens.at(0) |> Round.prompts()]))
+
+    [first_player, second_player] = (:sys.get_state(pid) |> elem(1)).game.players
+    assert {:error, _} = GameClient.advance_review_state(pid, "not in the game player")
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:error, _} = GameClient.advance_review_state(pid, first_player)
+
+    assert {:error, _} = GameClient.submit_correct(pid, "not in the game", true)
+    assert {:ok, nil} = GameClient.submit_correct(pid, first_player, true)
+    assert {:error, _} = GameClient.submit_vote(pid, first_player, first_player)
+    assert {:ok, nil} = GameClient.submit_vote(pid, first_player, second_player)
+    assert {:error, _} = GameClient.submit_vote(pid, first_player, second_player)
+
+    assert {:error, _} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:error, _} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.submit_correct(pid, second_player, false)
+    assert {:ok, nil} = GameClient.submit_vote(pid, second_player, first_player)
+    assert {:error, _} = GameClient.submit_vote(pid, second_player, first_player)
+
+    assert {:submit, %Prompt{}} = GameClient.get_state(pid, first_player)
   end
 end

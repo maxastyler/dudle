@@ -32,6 +32,12 @@ defmodule Dudle.GameServer.Events do
     end)
   end
 
+  defp add_to_player_score(data, _, 0), do: data
+
+  defp add_to_player_score(data, player, amount) do
+    update_in(data, [Lens.key(:game) |> Game.scores() |> Lens.key(player)], &(&1 + amount))
+  end
+
   def presence_diff(%{room: room} = data) do
     players = presence_players(room)
 
@@ -54,23 +60,36 @@ defmodule Dudle.GameServer.Events do
     :keep_state_and_data
   end
 
-  defp format_review_state({:review, {_, e} = inner} = _state, %{room: room} = data) do
-    {
-      :review,
-      inner,
-      get_in(data, [:game, Game.rounds() |> Lens.at(0) |> Round.prompts() |> Lens.at(e)])
-      # get_in(data, [:game, :rounds, Access.at(0), :prompts, Access.at(e)])
-    }
+  defp format_review_state({:review, {player, element} = inner} = _state, %{room: room} = data) do
+    {:review, inner,
+     get_in(data, [
+       Lens.key(:game)
+       |> Game.rounds()
+       |> Lens.at(0)
+       |> Round.prompts()
+       |> Lens.key(player)
+       |> Lens.at(element),
+       Access.at(0)
+     ])}
   end
 
   def broadcast_state({:review, {player, element}} = state, %{room: room} = data) do
-    Endpoint.broadcast(
-      "game:#{room}",
-      "broadcast_state",
-      {:review, {player, element},
-       get_in(data, [:game, Game.rounds() |> Lens.at(0) |> Round.prompts()])}
-    )
+    Endpoint.broadcast("game:#{room}", "broadcast_state", format_review_state(state, data))
+    :keep_state_and_data
+  end
 
+  def broadcast_state({:correct, _} = state, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", state)
+    :keep_state_and_data
+  end
+
+  def broadcast_state({:vote, _} = state, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", state)
+    :keep_state_and_data
+  end
+
+  def broadcast_state(:end, %{room: room, game: %{scores: scores}} = data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", {:end, scores})
     :keep_state_and_data
   end
 
@@ -86,7 +105,19 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, format_review_state(state, data)}]}
   end
 
-  def start_game(from, :lobby, %{presence_players: players} = data) do
+  def get_state(from, {:vote, _} = state, data, _player) do
+    {:keep_state_and_data, [{:reply, from, state}]}
+  end
+
+  def get_state(from, {:correct, _} = state, data, _player) do
+    {:keep_state_and_data, [{:reply, from, state}]}
+  end
+
+  def get_state(from, :end, %{game: %{scores: scores}} = _data, _player) do
+    {:keep_state_and_data, [{:reply, from, {:end, scores}}]}
+  end
+
+  def start_game(from, _state, %{presence_players: players} = data) do
     with {:ok, game} <- Game.new(players) do
       new_data = %{data | game: game}
 
@@ -169,4 +200,134 @@ defmodule Dudle.GameServer.Events do
   end
 
   def move_to_reviewing_state(_state, _data), do: :keep_state_and_data
+
+  @spec first_and_last_text_prompts([Prompt.t()]) :: {Prompt.t(), Prompt.t()}
+  defp first_and_last_text_prompts(prompts) do
+    text_prompts = Enum.filter(prompts, fn %Prompt{type: type} -> type == :text end)
+    {List.first(text_prompts), List.last(text_prompts)}
+  end
+
+  def advance_review_state(from, {:review, {player, element}}, data, calling_player) do
+    [round | _] = data.game.rounds
+    n_prompts = round.prompts[player] |> length()
+
+    cond do
+      calling_player != player ->
+        {:keep_state_and_data,
+         [{:reply, from, {:error, "You are not the current reviewing player"}}]}
+
+      element >= n_prompts ->
+        {:next_state, {:correct, {player, first_and_last_text_prompts(round.prompts[player])}},
+         data, [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+
+      :else ->
+        {:next_state, {:review, {player, element + 1}}, data,
+         [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+    end
+  end
+
+  def advance_review_state(from, _, _, _) do
+    {:keep_state_and_data, [{:reply, from, {:error, "Not in a reviewing state"}}]}
+  end
+
+  def submit_correct(
+        from,
+        {:correct, {player, {_, %Prompt{submitter: submitter}}}},
+        %{game: %{players: players}} = data,
+        submitting_player,
+        correct
+      ) do
+    cond do
+      player != submitting_player ->
+        {:keep_state_and_data,
+         [{:reply, from, {:error, "You are not the current reviewing player"}}]}
+
+      :else ->
+        other_players = Enum.filter(players, &(&1 != player))
+
+        new_data =
+          put_in(
+            data,
+            [
+              Lens.key(:game)
+              |> Game.rounds()
+              |> Lens.at(0)
+              |> Round.results()
+              |> Lens.key(player)
+              |> Lens.key(:correct)
+            ],
+            correct
+          )
+          |> add_to_player_score(submitter, if(correct, do: 3, else: 0))
+
+        {:next_state, {:vote, {player, other_players}}, new_data,
+         [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+    end
+  end
+
+  def submit_correct(from, _, _, _, _) do
+    {:keep_state_and_data, [{:reply, from, {:error, "Can't submit corrections at this time"}}]}
+  end
+
+  defp finish_game_or_new_round(from, %{game: game} = data) do
+    game_max_score = Map.values(game.scores) |> Enum.max()
+    max_score_reached = game.options.max_score != nil and game_max_score >= game.options.max_score
+    num_rounds = length(game.rounds)
+    round_limit_reached = game.options.max_rounds != nil and num_rounds >= game.options.max_rounds
+
+    if max_score_reached or round_limit_reached do
+      {:next_state, :end, data,
+       [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+    else
+      new_data =
+        data
+        |> put_in([:players_left], nil)
+        |> update_in([Lens.key(:game)], &Game.new_round/1)
+
+      {:next_state, :submit, new_data,
+       [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+    end
+  end
+
+  def submit_vote(from, {:vote, {player, others}}, data, submitter, vote) do
+    cond do
+      player != submitter ->
+        {:keep_state_and_data, [{:reply, from, {:error, "You are not the current voter"}}]}
+
+      vote not in others ->
+        {:keep_state_and_data,
+         [{:reply, from, {:error, "The voted for player is not in the available players"}}]}
+
+      :else ->
+        new_data =
+          put_in(
+            data,
+            [
+              Lens.key(:game)
+              |> Game.rounds()
+              |> Lens.at(0)
+              |> Round.results()
+              |> Lens.key(player)
+              |> Lens.key(:favourite)
+            ],
+            vote
+          )
+          |> add_to_player_score(submitter, 1)
+
+        players_left = new_data.players_left
+
+        case players_left do
+          [] ->
+            finish_game_or_new_round(from, new_data)
+
+          [p | ps] ->
+            {:next_state, {:review, {p, 0}}, new_data |> put_in([:players_left], ps),
+             [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+        end
+    end
+  end
+
+  def submit_vote(from, _, _, _, _) do
+    {:keep_state_and_data, [{:reply, from, {:error, "Cannot submit a vote at the moment"}}]}
+  end
 end

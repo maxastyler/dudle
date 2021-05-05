@@ -54,4 +54,16 @@ defmodule Dudle.GameServer do
   def handle_event({:call, from}, {:submit_prompt, prompt}, state, data) do
     submit_prompt(from, state, data, prompt)
   end
+
+  def handle_event({:call, from}, {:advance_review_state, player}, state, data) do
+    advance_review_state(from, state, data, player)
+  end
+
+  def handle_event({:call, from}, {:submit_correct, player, correct}, state, data) do
+    submit_correct(from, state, data, player, correct)
+  end
+
+  def handle_event({:call, from}, {:submit_vote, player, vote}, state, data) do
+    submit_vote(from, state, data, player, vote)
+  end
 end

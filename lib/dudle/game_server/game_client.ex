@@ -16,4 +16,16 @@ defmodule Dudle.GameClient do
   def submit_prompt(server, prompt) do
     GenStateMachine.call(server, {:submit_prompt, prompt})
   end
+
+  def advance_review_state(server, player) do
+    GenStateMachine.call(server, {:advance_review_state, player})
+  end
+
+  def submit_correct(server, player, correct) do
+    GenStateMachine.call(server, {:submit_correct, player, correct})
+  end
+
+  def submit_vote(server, player, vote) do
+    GenStateMachine.call(server, {:submit_vote, player, vote})
+  end
 end
