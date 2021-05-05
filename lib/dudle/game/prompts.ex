@@ -4,7 +4,7 @@ defmodule Dudle.Game.Prompts do
   """
 
   def prompts do
-    [
+    MapSet.new([
       "My piano",
       "Dirty floorboards",
       "A massive chocolate bar stuffed in a chicken",
@@ -20,7 +20,7 @@ defmodule Dudle.Game.Prompts do
       "Waking up to find you're at sea",
       "Jumped up plumps",
       "A daring escape",
-      "Flipped cows",
-    ]
+      "Flipped cows"
+    ])
   end
 end

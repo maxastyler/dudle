@@ -63,6 +63,11 @@ defmodule Dudle.GameClientTest do
     assert {:ok, :game_started} = GameClient.start_game(pid)
     assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
     assert_receive %{event: "broadcast_state", payload: :state_updated}, 300
-    assert {:submit, %Prompt{}} = GameClient.get_state(pid, "player_1")
+
+    assert {:submit, %Prompt{type: text, submitter: :initial}} =
+             GameClient.get_state(pid, "player_1")
+
+    assert {:submit, %Prompt{type: text, submitter: :initial}} =
+             GameClient.get_state(pid, "player_2")
   end
 end

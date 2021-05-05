@@ -45,8 +45,8 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, :lobby}]}
   end
 
-  def get_state(from, :submit, data, player) do
-    {:keep_state_and_data, [{:reply, from, {:submit, }}]}
+  def get_state(from, :submit, %{game: %{player_prompts: player_prompts}} = data, player) do
+    {:keep_state_and_data, [{:reply, from, {:submit, player_prompts[player]}}]}
   end
 
   def start_game(from, :lobby, %{presence_players: players} = data) do

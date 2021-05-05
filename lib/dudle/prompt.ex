@@ -13,4 +13,9 @@ defmodule Dudle.Prompt do
     field :submitter, String.t() | :initial
     field :data, String.t()
   end
+
+  @doc """
+  Create a new prompt
+  """
+  def new(type, submitter, data), do: %__MODULE__{type: type, submitter: submitter, data: data}
 end
