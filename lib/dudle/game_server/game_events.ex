@@ -3,7 +3,7 @@ defmodule Dudle.GameServer.Events do
   This module contains the implementation for all of the game server events
   """
   alias DudleWeb.Endpoint
-  alias Dudle.{Presence, Game, Prompt, Round}
+  alias Dudle.{Presence, Game, Prompt, Round, Options}
 
   @doc """
   Get a MapSet of the presence players in the room
@@ -117,8 +117,12 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, {:end, scores}}]}
   end
 
-  def start_game(from, _state, %{presence_players: players} = data) do
-    with {:ok, game} <- Game.new(players) do
+  def start_game(
+        from,
+        _state,
+        %{presence_players: players, prompts: prompts, options: options} = data
+      ) do
+    with {:ok, game} <- Game.new(players, prompts, options) do
       new_data = %{data | game: game}
 
       {:next_state, :submit, new_data,
@@ -329,5 +333,15 @@ defmodule Dudle.GameServer.Events do
 
   def submit_vote(from, _, _, _, _) do
     {:keep_state_and_data, [{:reply, from, {:error, "Cannot submit a vote at the moment"}}]}
+  end
+
+  def set_score_limit(from, state, data, limit) when is_number(limit) do
+    {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_score()], limit),
+     [{:reply, from, {:ok, limit}}]}
+  end
+
+  def set_round_limit(from, state, data, limit) when is_number(limit) do
+    {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_rounds()], limit),
+     [{:reply, from, {:ok, limit}}]}
   end
 end

@@ -34,7 +34,7 @@ defmodule Dudle.Game do
   """
   @spec new(MapSet.t(String.t()), MapSet.t(String.t()), Options.t()) ::
           {:ok, __MODULE__.t()} | {:error, String.t()}
-  def new(players, prompts \\ Prompts.prompts(), options \\ %Options{}) do
+  def new(players, prompts, options) do
     cond do
       MapSet.size(prompts) < MapSet.size(players) ->
         {:error, "less prompts than there are players"}

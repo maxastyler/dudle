@@ -26,10 +26,9 @@ defmodule Dudle.GameClientTest do
     assert {:lobby,
             %{
               room: room,
-              presence_players: MapSet.new(["player_1", "player_2"]),
+              presence_players: _,
               game: nil
-            }} ==
-             :sys.get_state(pid)
+            }} = :sys.get_state(pid)
 
     Dudle.Presence.track(self(), "presence:#{room}", "new_player", %{})
     Process.sleep(100)
@@ -37,10 +36,9 @@ defmodule Dudle.GameClientTest do
     assert {:lobby,
             %{
               room: room,
-              presence_players: MapSet.new(["player_1", "player_2", "new_player"]),
+              presence_players: _,
               game: nil
-            }} ==
-             :sys.get_state(pid)
+            }} = :sys.get_state(pid)
 
     player_map =
       for(p <- ["player_1", "player_2", "new_player"], into: %{}, do: {p, %{online: true}})
@@ -112,5 +110,63 @@ defmodule Dudle.GameClientTest do
     assert {:error, _} = GameClient.submit_vote(pid, second_player, first_player)
 
     assert {:submit, %Prompt{}} = GameClient.get_state(pid, first_player)
+  end
+
+  test "score limits work", %{pid: pid} do
+    GameClient.set_score_limit(pid, 2)
+    GameClient.start_game(pid)
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    [first_player, second_player] = (:sys.get_state(pid) |> elem(1)).game.players
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.submit_correct(pid, first_player, true)
+    assert {:ok, nil} = GameClient.submit_vote(pid, first_player, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.submit_correct(pid, second_player, true)
+    assert {:ok, nil} = GameClient.submit_vote(pid, second_player, first_player)
+    assert {:end, %{"player_1" => _, "player_2" => _}} = GameClient.get_state(pid, first_player)
+  end
+
+  test "round limits work", %{pid: pid} do
+    GameClient.set_round_limit(pid, 1)
+    GameClient.start_game(pid)
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    [first_player, second_player] = (:sys.get_state(pid) |> elem(1)).game.players
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.submit_correct(pid, first_player, true)
+    assert {:ok, nil} = GameClient.submit_vote(pid, first_player, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, second_player)
+    assert {:ok, nil} = GameClient.submit_correct(pid, second_player, true)
+    assert {:ok, nil} = GameClient.submit_vote(pid, second_player, first_player)
+    assert {:end, %{"player_1" => _, "player_2" => _}} = GameClient.get_state(pid, first_player)
   end
 end

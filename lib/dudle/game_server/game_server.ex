@@ -1,7 +1,7 @@
 defmodule Dudle.GameServer do
   use GenStateMachine
 
-  alias Dudle.Presence
+  alias Dudle.{Presence, Game, Options}
   import Dudle.GameServer.Events
 
   @server_timeout 10 * 60 * 1000
@@ -16,8 +16,14 @@ defmodule Dudle.GameServer do
     DudleWeb.Endpoint.subscribe("presence:#{room}")
     players = presence_players(room)
 
-    {:ok, :lobby, %{room: room, presence_players: players, game: nil},
-     [{:timeout, @server_timeout, :any}]}
+    {:ok, :lobby,
+     %{
+       room: room,
+       presence_players: players,
+       game: nil,
+       prompts: Game.Prompts.prompts(),
+       options: %Options{}
+     }, [{:timeout, @server_timeout, :any}]}
   end
 
   @impl true
@@ -65,5 +71,13 @@ defmodule Dudle.GameServer do
 
   def handle_event({:call, from}, {:submit_vote, player, vote}, state, data) do
     submit_vote(from, state, data, player, vote)
+  end
+
+  def handle_event({:call, from}, {:set_score_limit, limit}, state, data) do
+    set_score_limit(from, state, data, limit)
+  end
+
+  def handle_event({:call, from}, {:set_round_limit, limit}, state, data) do
+    set_round_limit(from, state, data, limit)
   end
 end
