@@ -24,6 +24,10 @@ defmodule Dudle.GameClient do
     GenStateMachine.call(server, {:get_state, player})
   end
 
+  def get_players(server) do
+    GenStateMachine.call(server, :get_players)
+  end
+
   def submit_prompt(server, prompt) do
     GenStateMachine.call(server, {:submit_prompt, prompt})
   end

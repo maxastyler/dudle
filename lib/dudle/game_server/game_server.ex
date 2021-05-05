@@ -53,6 +53,10 @@ defmodule Dudle.GameServer do
     get_state(from, state, data, player)
   end
 
+  def handle_event({:call, from}, :get_players, state, data) do
+    get_players(from, state, data)
+  end
+
   def handle_event({:call, from}, :start_game, state, data) do
     start_game(from, state, data)
   end

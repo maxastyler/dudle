@@ -59,6 +59,52 @@ defmodule Dudle.GameClientTest do
     assert {:error, _} = GameClient.submit_prompt(pid, Prompt.new(:text, "test", "hi"))
   end
 
+  test "getting players works correctly", %{pid: pid, room: room} do
+    DudleWeb.Endpoint.subscribe("game:#{room}")
+    assert :lobby = GameClient.get_state(pid, "player_1")
+    initial_map = Enum.map(["player_1", "player_2"], &{&1, %{online: true}}) |> Map.new()
+    assert initial_map == GameClient.get_players(pid)
+    assert {:ok, :game_started} = GameClient.start_game(pid)
+    assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
+    assert_receive %{event: "broadcast_state", payload: :state_updated}, 300
+
+    assert {:submit, %Prompt{type: text, submitter: :initial}} =
+             GameClient.get_state(pid, "player_1")
+
+    assert {:submit, %Prompt{type: text, submitter: :initial}} =
+             GameClient.get_state(pid, "player_2")
+
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+
+    Process.sleep(100)
+
+    new_map =
+      Enum.map(["player_1", "player_2"], &{&1, %{online: true, score: 0, submitted: false}})
+      |> Map.new()
+
+    assert new_map == GameClient.get_players(pid)
+    prompt = Prompt.new(:text, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    prompt = Prompt.new(:text, "player_2", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
+    assert {:error, "not in submitting state"} = GameClient.submit_prompt(pid, prompt)
+    Process.sleep(100)
+    new_map =
+      Enum.map(["player_1", "player_2"], &{&1, %{online: true, score: 0}})
+      |> Map.new()
+    assert new_map == GameClient.get_players(pid)
+    [first_player, second_player] = (:sys.get_state(pid) |> elem(1)).game.players
+    assert {:error, _} = GameClient.advance_review_state(pid, "not in the game player")
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:ok, nil} = GameClient.advance_review_state(pid, first_player)
+    assert {:error, _} = GameClient.advance_review_state(pid, first_player)
+  end
+
   test "valid game can be played", %{pid: pid, room: room} do
     DudleWeb.Endpoint.subscribe("game:#{room}")
     assert :lobby = GameClient.get_state(pid, "player_1")
