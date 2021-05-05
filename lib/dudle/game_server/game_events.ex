@@ -31,10 +31,30 @@ defmodule Dudle.GameServer.Events do
     :keep_state_and_data
   end
 
+  def broadcast_state(:lobby, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", :lobby)
+    :keep_state_and_data
+  end
+
+  def broadcast_state(:submit, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", :state_updated)
+    :keep_state_and_data
+  end
+
+  def get_state(from, :lobby, _data, _player) do
+    {:keep_state_and_data, [{:reply, from, :lobby}]}
+  end
+
+  def get_state(from, :submit, data, player) do
+    {:keep_state_and_data, [{:reply, from, {:submit, }}]}
+  end
+
   def start_game(from, :lobby, %{presence_players: players} = data) do
     with {:ok, game} <- Game.new(players) do
       new_data = %{data | game: game}
-      {:next_state, :submit, new_data, [{:reply, from, {:ok, :server_started}}]}
+
+      {:next_state, :submit, new_data,
+       [{:reply, from, {:ok, :game_started}}, {:next_event, :internal, :broadcast_state}]}
     else
       {:error, e} -> {:keep_state_and_data, [{:reply, from, {:error, e}}]}
     end

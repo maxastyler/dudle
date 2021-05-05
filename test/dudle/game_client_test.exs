@@ -1,7 +1,7 @@
 defmodule Dudle.GameClientTest do
   use ExUnit.Case
 
-  alias Dudle.{GameClient, GameServer, Game}
+  alias Dudle.{GameClient, GameServer, Game, Prompt}
 
   setup do
     room = "test_room"
@@ -58,7 +58,11 @@ defmodule Dudle.GameClientTest do
   end
 
   test "valid game can be played", %{pid: pid, room: room} do
-    assert {:ok, :server_started} = GameClient.start_game(pid)
+    DudleWeb.Endpoint.subscribe("game:#{room}")
+    assert :lobby = GameClient.get_state(pid, "player_1")
+    assert {:ok, :game_started} = GameClient.start_game(pid)
     assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
+    assert_receive %{event: "broadcast_state", payload: :state_updated}, 300
+    assert {:submit, %Prompt{}} = GameClient.get_state(pid, "player_1")
   end
 end

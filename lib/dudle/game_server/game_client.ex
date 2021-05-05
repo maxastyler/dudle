@@ -8,4 +8,8 @@ defmodule Dudle.GameClient do
   def start_game(server) do
     GenStateMachine.call(server, :start_game)
   end
+
+  def get_state(server, player) do
+    GenStateMachine.call(server, {:get_state, player})
+  end
 end

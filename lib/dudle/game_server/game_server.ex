@@ -31,6 +31,14 @@ defmodule Dudle.GameServer do
     broadcast_players(state, data)
   end
 
+  def handle_event(:internal, :broadcast_state, state, data) do
+    broadcast_state(state, data)
+  end
+
+  def handle_event({:call, from}, {:get_state, player}, state, data) do
+    get_state(from, state, data, player)
+  end
+
   def handle_event({:call, from}, :start_game, state, data) do
     start_game(from, state, data)
   end
