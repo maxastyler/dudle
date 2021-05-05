@@ -42,4 +42,8 @@ defmodule Dudle.GameServer do
   def handle_event({:call, from}, :start_game, state, data) do
     start_game(from, state, data)
   end
+
+  def handle_event({:call, from}, {:submit_prompt, prompt}, state, data) do
+    submit_prompt(from, state, data, prompt)
+  end
 end

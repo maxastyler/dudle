@@ -57,6 +57,10 @@ defmodule Dudle.GameClientTest do
     assert {:error, _} = GameClient.start_game(pid)
   end
 
+  test "can't submit when game hasn't started", %{pid: pid} do
+    assert {:error, _} = GameClient.submit_prompt(pid, Prompt.new(:text, "test", "hi"))
+  end
+
   test "valid game can be played", %{pid: pid, room: room} do
     DudleWeb.Endpoint.subscribe("game:#{room}")
     assert :lobby = GameClient.get_state(pid, "player_1")
@@ -69,5 +73,8 @@ defmodule Dudle.GameClientTest do
 
     assert {:submit, %Prompt{type: text, submitter: :initial}} =
              GameClient.get_state(pid, "player_2")
+
+    prompt = Prompt.new(:image, "player_1", "im")
+    assert {:ok, prompt} = GameClient.submit_prompt(pid, prompt)
   end
 end

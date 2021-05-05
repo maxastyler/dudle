@@ -2,9 +2,8 @@ defmodule Dudle.GameServer.Events do
   @moduledoc """
   This module contains the implementation for all of the game server events
   """
-  alias Dudle.Presence
   alias DudleWeb.Endpoint
-  alias Dudle.Game
+  alias Dudle.{Presence, Game, Prompt, Round}
 
   @doc """
   Get a MapSet of the presence players in the room
@@ -59,4 +58,29 @@ defmodule Dudle.GameServer.Events do
       {:error, e} -> {:keep_state_and_data, [{:reply, from, {:error, e}}]}
     end
   end
+
+  def submit_prompt(
+        from,
+        :submit,
+        %{game: %{players: players, turn_submissions: turn_submissions}} = data,
+        %Prompt{submitter: submitter} = prompt
+      ) do
+    if submitter in players do
+      new_turn_submissions = Map.put(turn_submissions, submitter, prompt)
+
+      {:keep_state, put_in(data, [:game, Game.turn_submissions()], new_turn_submissions),
+       cond do
+         map_size(new_turn_submissions) >= length(players) ->
+           [{:reply, from, {:ok, prompt}}, {:next_event, :internal, :add_submissions_to_round}]
+
+         :else ->
+           [{:reply, from, {:ok, prompt}}]
+       end}
+    else
+      {:keep_state_and_data, [{:reply, from, {:error, "submitting player not in game"}}]}
+    end
+  end
+
+  def submit_prompt(from, _state, _data, _prompt),
+    do: {:keep_state_and_data, [{:reply, from, {:error, "not in submitting state"}}]}
 end
