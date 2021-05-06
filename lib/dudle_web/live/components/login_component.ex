@@ -4,7 +4,11 @@ defmodule DudleWeb.LoginComponent do
   @impl true
   def render(assigns) do
     ~L"""
-    Login component 
+    <form phx-submit="enter_room">
+        <input type="text" name="room" placeholder="Enter room name" value="<%= @room %>" />
+        <input type="text" name="name" placeholder="Enter player name" value="<%= @name %>" />
+        <button type="submit">Go</button>
+    </form>
     """
   end
 end

@@ -40,4 +40,9 @@ defmodule DudleWeb.GameLive do
   def mount(params, _session, socket) do
     {:ok, assign(socket, room: params["room"], name: params["name"])}
   end
+
+  def handle_event("enter_room", %{"room" => room, "name" => name}, socket) do
+    live_redirect()
+    {:noreply, socket}
+  end
 end
