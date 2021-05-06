@@ -78,15 +78,23 @@ defmodule DudleWeb.GameLive do
     {:noreply, socket}
   end
 
-  def handle_event("handle_text_submission", %{"prompt_text" => prompt_text}, socket) do
+  defp handle_prompt_submission(prompt_type, prompt_data, socket) do
     with :ok <-
            GameClient.submit_prompt(
              via(socket.assigns.room),
-             Prompt.new(:text, socket.assigns.name, prompt_text)
+             Prompt.new(prompt_type, socket.assigns.name, prompt_data)
            ) do
-      {:noreply, socket}
+      put_flash(socket, :info, "submitted")
     else
-      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+      {:error, e} -> put_flash(socket, :error, e)
     end
+  end
+
+  def handle_event("handle_text_data", %{"prompt_text" => prompt_text}, socket) do
+    {:noreply, handle_prompt_submission(:text, prompt_text, socket)}
+  end
+
+  def handle_event("handle_image_data", %{"image_data" => image_data}, socket) do
+    {:noreply, handle_prompt_submission(:image, image_data, socket)}
   end
 end

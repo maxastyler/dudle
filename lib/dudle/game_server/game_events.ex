@@ -245,12 +245,14 @@ defmodule Dudle.GameServer.Events do
        new_round_submissions |> Enum.map(fn {_, p} -> length(p) end) |> Enum.min() >
            map_size(new_round_submissions) ->
          [
-           {:next_event, :internal, :move_to_reviewing_state},
-           {:next_event, :internal, :broadcast_players}
+           {:next_event, :internal, :move_to_reviewing_state}
          ]
 
        :else ->
-         [{:next_event, :internal, :broadcast_players}]
+         [
+           {:next_event, :internal, :broadcast_players},
+           {:next_event, :internal, :broadcast_state}
+         ]
      end}
   end
 

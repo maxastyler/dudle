@@ -6,7 +6,10 @@ defmodule DudleWeb.PromptComponent do
     ~L"""
     <%= @prompt.type %>
     <%= @prompt.submitter %>
-    <%= String.slice(@prompt.data, 0, 10) %>
+    <%= case @prompt.type do %>
+    <%= :text -> %> <p>@prompt.data</p>
+    <%= :image -> %> <img src=<%= @prompt.data %>></img>
+    <% end %>
     """
   end
 end
