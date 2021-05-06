@@ -4,7 +4,7 @@ defmodule DudleWeb.LoginComponent do
   @impl true
   def render(assigns) do
     ~L"""
-    Login component
+    Login component 
     """
   end
 end
