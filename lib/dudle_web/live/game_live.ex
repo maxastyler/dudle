@@ -55,16 +55,26 @@ defmodule DudleWeb.GameLive do
   end
 
   @impl true
+  def handle_info(%{event: "broadcast_players", payload: player_state}, socket) do
+    {:noreply, assign_players(socket, player_state)}
+  end
+
+  def handle_info(%{event: "broadcast_state", payload: :state_updated}, socket) do
+    {:noreply, get_state(socket)}
+  end
+
+  def handle_info(%{event: "broadcast_state", payload: game_state}, socket) do
+    {:noreply, assign_state(socket, game_state)}
+  end
+
+  @impl true
   def handle_event("enter_room", %{"room" => room, "name" => name}, socket) do
     {:noreply,
      push_redirect(socket, to: Routes.game_path(socket, :index, room: room, name: name))}
   end
 
-  def handle_info(%{event: "broadcast_players", payload: player_state}, socket) do
-    {:noreply, assign_players(socket, player_state)}
-  end
-
-  def handle_info(%{event: "broadcast_state", payload: game_state}, socket) do
-    {:noreply, assign_state(socket, game_state)}
+  def handle_event("start_game", _, socket) do
+    GameClient.start_game(via(socket.assigns.room))
+    {:noreply, socket}
   end
 end

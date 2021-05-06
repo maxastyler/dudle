@@ -2,7 +2,15 @@
     <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players %>
     <%= case @state do %>
         <%= :lobby -> %> <%= live_component @socket, DudleWeb.LobbyComponent, id: :lobby%>
-            <%= _ -> %> <p>Other</p>
+
+        <%= {:submit, _} -> %>
+            <%= if @name in Map.keys(@players) do %>
+                <%= live_component @socket, DudleWeb.SubmitComponent, id: :submit, prompt: elem(@state, 1) %>
+            <%= else %>
+                <p>Players submitting... please wait</p>
+            <% end %>
+
+        <%= _ ->  %> <p>Other</p>
     <% end %>
 <% else %>
 <%= live_component @socket, DudleWeb.LoginComponent, room: @room, name: @name %>

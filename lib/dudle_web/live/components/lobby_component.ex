@@ -4,7 +4,7 @@ defmodule DudleWeb.LobbyComponent do
   @impl true
   def render(assigns) do
     ~L"""
-    This is the lobby component
+    <button phx-click="start_game">Start game</button>
     """
   end
 end
