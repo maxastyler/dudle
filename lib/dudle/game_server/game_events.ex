@@ -182,10 +182,10 @@ defmodule Dudle.GameServer.Events do
       {:keep_state, put_in(data, [:game, Game.turn_submissions()], new_turn_submissions),
        cond do
          map_size(new_turn_submissions) >= length(players) ->
-           [{:reply, from, {:ok, prompt}}, {:next_event, :internal, :add_submissions_to_round}]
+           [{:reply, from, :ok}, {:next_event, :internal, :add_submissions_to_round}]
 
          :else ->
-           [{:reply, from, {:ok, prompt}}, {:next_event, :internal, :broadcast_players}]
+           [{:reply, from, :ok}, {:next_event, :internal, :broadcast_players}]
        end}
     else
       {:keep_state_and_data, [{:reply, from, {:error, "submitting player not in game"}}]}
@@ -263,11 +263,11 @@ defmodule Dudle.GameServer.Events do
 
       element >= n_prompts ->
         {:next_state, {:correct, {player, first_and_last_text_prompts(round.prompts[player])}},
-         data, [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+         data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
 
       :else ->
         {:next_state, {:review, {player, element + 1}}, data,
-         [{:reply, from, {:ok, nil}}, {:next_event, :internal, :broadcast_state}]}
+         [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
     end
   end
 
@@ -312,7 +312,7 @@ defmodule Dudle.GameServer.Events do
 
         {:next_state, {:vote, {player, other_players}}, new_data,
          [
-           {:reply, from, {:ok, nil}},
+           {:reply, from, :ok},
            {:next_event, :internal, :broadcast_state},
            {:next_event, :internal, :broadcast_players}
          ]}
@@ -329,25 +329,21 @@ defmodule Dudle.GameServer.Events do
     num_rounds = length(game.rounds)
     round_limit_reached = game.options.max_rounds != nil and num_rounds >= game.options.max_rounds
 
+    reply = [
+      {:reply, from, :ok},
+      {:next_event, :internal, :broadcast_state},
+      {:next_event, :internal, :broadcast_players}
+    ]
+
     if max_score_reached or round_limit_reached do
-      {:next_state, :end, data,
-       [
-         {:reply, from, {:ok, nil}},
-         {:next_event, :internal, :broadcast_state},
-         {:next_event, :internal, :broadcast_players}
-       ]}
+      {:next_state, :end, data, reply}
     else
       new_data =
         data
         |> put_in([:players_left], nil)
         |> update_in([Lens.key(:game)], &Game.new_round/1)
 
-      {:next_state, :submit, new_data,
-       [
-         {:reply, from, {:ok, nil}},
-         {:next_event, :internal, :broadcast_state},
-         {:next_event, :internal, :broadcast_players}
-       ]}
+      {:next_state, :submit, new_data, reply}
     end
   end
 
@@ -374,7 +370,7 @@ defmodule Dudle.GameServer.Events do
           [p | ps] ->
             {:next_state, {:review, {p, 0}}, new_data |> put_in([:players_left], ps),
              [
-               {:reply, from, {:ok, nil}},
+               {:reply, from, :ok},
                {:next_event, :internal, :broadcast_state},
                {:next_event, :internal, :broadcast_players}
              ]}
