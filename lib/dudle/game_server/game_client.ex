@@ -13,7 +13,11 @@ defmodule Dudle.GameClient do
   def start_server(room) do
     cond do
       String.length(room) > GameServer.room_name_limit() ->
-        {:error, "Room name is too long"}
+        {:error,
+         "Cannot join: room name's too long (under #{GameServer.room_name_limit()} characters please)"}
+
+      String.length(room) < 1 ->
+        {:error, "Cannot join: room name can't be empty"}
 
       :else ->
         case DynamicSupervisor.start_child(

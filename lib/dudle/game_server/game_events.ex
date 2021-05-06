@@ -76,16 +76,17 @@ defmodule Dudle.GameServer.Events do
   end
 
   defp format_review_state({:review, {player, element} = inner} = _state, %{room: room} = data) do
-    {:review, inner,
-     get_in(data, [
-       Lens.key(:game)
-       |> Game.rounds()
-       |> Lens.at(0)
-       |> Round.prompts()
-       |> Lens.key(player)
-       |> Lens.at(element),
-       Access.at(0)
-     ])}
+    {:review,
+     {inner,
+      get_in(data, [
+        Lens.key(:game)
+        |> Game.rounds()
+        |> Lens.at(0)
+        |> Round.prompts()
+        |> Lens.key(player)
+        |> Lens.at(element),
+        Access.at(0)
+      ])}}
   end
 
   def broadcast_state({:review, {player, element}} = state, %{room: room} = data) do
@@ -143,7 +144,15 @@ defmodule Dudle.GameServer.Events do
          [{:reply, from, {:error, "Cannot join: someone is using that name already"}}]}
 
       String.length(player) > GameServer.player_name_limit() ->
-        {:keep_state_and_data, [{:reply, from, {:error, "Cannot join: name is too long"}}]}
+        {:keep_state_and_data,
+         [
+           {:reply, from,
+            {:error,
+             "Cannot join: name is too long (under #{GameServer.player_name_limit()} characters please)"}}
+         ]}
+
+      String.length(player) < 1 ->
+        {:keep_state_and_data, [{:reply, from, {:error, "Cannot join: name is empty"}}]}
 
       :else ->
         {:keep_state, %{data | presence_players: MapSet.put(players, player)},

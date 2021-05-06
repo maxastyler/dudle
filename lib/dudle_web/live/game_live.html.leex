@@ -1,1 +1,9 @@
+<%= if assigns[:connected] do %>
+    <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players %>
+    <%= case @state do %>
+        <%= :lobby -> %> <%= live_component @socket, DudleWeb.LobbyComponent, id: :lobby%>
+            <%= _ -> %> <p>Other</p>
+    <% end %>
+<% else %>
 <%= live_component @socket, DudleWeb.LoginComponent, room: @room, name: @name %>
+<% end %>

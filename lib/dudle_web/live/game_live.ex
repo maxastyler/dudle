@@ -12,27 +12,40 @@ defmodule DudleWeb.GameLive do
     {:via, Registry, {Dudle.GameRegistry, room}}
   end
 
+  defp assign_state(socket, {:review, {{_, element}, prompt}} = state) do
+    assign(socket, state: state, reset_review_prompts: element == 0)
+    |> update(:review_prompts, &[{element, prompt} | &1])
+  end
+
+  defp assign_state(socket, state) do
+    assign(socket, state: state)
+  end
+
   defp get_state(socket) do
-    # GameClient.get_state(via(socket.assigns.room))
-    socket
+    assign_state(socket, GameClient.get_state(via(socket.assigns.room), socket.assigns.name))
+  end
+
+  defp assign_players(socket, players) do
+    assign(socket, players: players)
   end
 
   defp get_players(socket) do
-    socket
+    assign_players(socket, GameClient.get_players(via(socket.assigns.room)))
   end
 
   @impl true
   def mount(%{"room" => room, "name" => name} = _params, _session, socket) do
+    socket = assign(socket, room: room, name: name)
+
     socket =
       with {:ok, _} <- GameClient.start_server(room),
            {:ok, player} <- GameClient.join_game(via(room), name) do
         Endpoint.subscribe("game:#{room}")
-        Presence.track(socket, name, %{})
-        assign(socket, connected: true) |> get_state() |> get_players()
+        Presence.track(self(), "presence:#{room}", name, %{})
+        get_state(socket) |> get_players() |> assign(connected: true)
       else
         {:error, error_string} -> put_flash(socket, :error, error_string)
       end
-      |> assign(room: room, name: name)
 
     {:ok, socket, temporary_assigns: [review_prompts: []]}
   end
@@ -41,8 +54,17 @@ defmodule DudleWeb.GameLive do
     {:ok, assign(socket, room: params["room"], name: params["name"])}
   end
 
+  @impl true
   def handle_event("enter_room", %{"room" => room, "name" => name}, socket) do
-    live_redirect()
-    {:noreply, socket}
+    {:noreply,
+     push_redirect(socket, to: Routes.game_path(socket, :index, room: room, name: name))}
+  end
+
+  def handle_info(%{event: "broadcast_players", payload: player_state}, socket) do
+    {:noreply, assign_players(socket, player_state)}
+  end
+
+  def handle_info(%{event: "broadcast_state", payload: game_state}, socket) do
+    {:noreply, assign_state(socket, game_state)}
   end
 end

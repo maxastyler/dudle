@@ -223,6 +223,8 @@ defmodule Dudle.GameClientTest do
     assert {:error, _} = GameClient.join_game(pid, "hiyi")
     assert {:ok, "hoyo"} == GameClient.join_game(pid, "hoyo")
     n = String.duplicate("h", GameServer.player_name_limit() + 1)
+    lim = GameServer.player_name_limit()
+    sliced = String.slice(n, 0, lim)
     assert {:error, _} = GameClient.join_game(pid, n)
   end
 end
