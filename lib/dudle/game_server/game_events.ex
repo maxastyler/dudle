@@ -185,19 +185,33 @@ defmodule Dudle.GameServer.Events do
         %{game: %{players: players, turn_submissions: turn_submissions}} = data,
         %Prompt{submitter: submitter} = prompt
       ) do
-    if submitter in players do
-      new_turn_submissions = Map.put(turn_submissions, submitter, prompt)
+    cond do
+      submitter not in players ->
+        {:keep_state_and_data, [{:reply, from, {:error, "Submitting player not in game"}}]}
 
-      {:keep_state, put_in(data, [:game, Game.turn_submissions()], new_turn_submissions),
-       cond do
-         map_size(new_turn_submissions) >= length(players) ->
-           [{:reply, from, :ok}, {:next_event, :internal, :add_submissions_to_round}]
+      prompt.type == :text and
+          (String.length(prompt.data) > GameServer.prompt_text_max_limit() or
+             String.length(prompt.data) < GameServer.prompt_text_min_limit()) ->
+        {:keep_state_and_data,
+         [
+           {:reply, from,
+            {:error,
+             "Prompt must be between #{GameServer.prompt_text_min_limit()} and #{
+               GameServer.prompt_text_max_limit()
+             } characters long"}}
+         ]}
 
-         :else ->
-           [{:reply, from, :ok}, {:next_event, :internal, :broadcast_players}]
-       end}
-    else
-      {:keep_state_and_data, [{:reply, from, {:error, "submitting player not in game"}}]}
+      :else ->
+        new_turn_submissions = Map.put(turn_submissions, submitter, prompt)
+
+        {:keep_state, put_in(data, [:game, Game.turn_submissions()], new_turn_submissions),
+         cond do
+           map_size(new_turn_submissions) >= length(players) ->
+             [{:reply, from, :ok}, {:next_event, :internal, :add_submissions_to_round}]
+
+           :else ->
+             [{:reply, from, :ok}, {:next_event, :internal, :broadcast_players}]
+         end}
     end
   end
 

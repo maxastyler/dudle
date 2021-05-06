@@ -6,7 +6,7 @@ defmodule DudleWeb.GameLive do
   use DudleWeb, :live_view
   alias Dudle.GameClient
   alias DudleWeb.Endpoint
-  alias Dudle.Presence
+  alias Dudle.{Presence, Prompt}
 
   defp via(room) do
     {:via, Registry, {Dudle.GameRegistry, room}}
@@ -76,5 +76,17 @@ defmodule DudleWeb.GameLive do
   def handle_event("start_game", _, socket) do
     GameClient.start_game(via(socket.assigns.room))
     {:noreply, socket}
+  end
+
+  def handle_event("handle_text_submission", %{"prompt_text" => prompt_text}, socket) do
+    with :ok <-
+           GameClient.submit_prompt(
+             via(socket.assigns.room),
+             Prompt.new(:text, socket.assigns.name, prompt_text)
+           ) do
+      {:noreply, socket}
+    else
+      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+    end
   end
 end

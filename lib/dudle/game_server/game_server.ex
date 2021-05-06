@@ -10,7 +10,8 @@ defmodule Dudle.GameServer do
 
   def room_name_limit, do: 50
 
-  def prompt_text_limit, do: 100
+  def prompt_text_max_limit, do: 100
+  def prompt_text_min_limit, do: 1
 
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
