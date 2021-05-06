@@ -16,10 +16,14 @@ defmodule Dudle.GameClient do
         {:error, "Room name is too long"}
 
       :else ->
-        DynamicSupervisor.start_child(
-          Dudle.GameSupervisor,
-          {Dudle.GameServer, data: %{room: room}, name: via(room)}
-        )
+        case DynamicSupervisor.start_child(
+               Dudle.GameSupervisor,
+               {Dudle.GameServer, data: %{room: room}, name: via(room)}
+             ) do
+          {:ok, pid} -> {:ok, pid}
+          {:error, {:already_started, pid}} -> {:ok, pid}
+          e -> e
+        end
     end
   end
 
