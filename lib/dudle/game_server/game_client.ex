@@ -9,11 +9,18 @@ defmodule Dudle.GameClient do
     {:via, Registry, {Dudle.GameRegistry, room}}
   end
 
+  @spec start_server(String.t()) :: {:error, any()} | {:ok, any()}
   def start_server(room) do
-    DynamicSupervisor.start_child(
-      Dudle.GameSupervisor,
-      {Dudle.GameServer, data: %{room: room}, name: via(room)}
-    )
+    cond do
+      String.length(room) > GameServer.room_name_limit() ->
+        {:error, "Room name is too long"}
+
+      :else ->
+        DynamicSupervisor.start_child(
+          Dudle.GameSupervisor,
+          {Dudle.GameServer, data: %{room: room}, name: via(room)}
+        )
+    end
   end
 
   def start_game(server) do

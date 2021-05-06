@@ -8,6 +8,8 @@ defmodule Dudle.GameServer do
 
   def player_name_limit, do: 50
 
+  def room_name_limit, do: 50
+
   def start_link(options) do
     {data, opts} = Keyword.pop(options, :data)
     GenStateMachine.start_link(__MODULE__, data, opts)
