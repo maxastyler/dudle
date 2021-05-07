@@ -29,7 +29,7 @@ defmodule Dudle.GameServer.Events do
         } = _data
       ) do
     Enum.map(players, fn p ->
-      {p, %{online: p in presence_players, submitted: p in turn_submissions, score: scores[p]}}
+      {p, %{online: p in presence_players, submitted: p in Map.keys(turn_submissions), score: scores[p]}}
     end)
     |> Map.new()
   end
