@@ -4,12 +4,13 @@ defmodule DudleWeb.PromptComponent do
   @impl true
   def render(assigns) do
     ~L"""
-    <%= @prompt.type %>
-    <%= @prompt.submitter %>
+    <div>
     <%= case @prompt.type do %>
-    <%= :text -> %> <p>@prompt.data</p>
+    <%= :text -> %> <p><%= @prompt.data %></p>
     <%= :image -> %> <img src=<%= @prompt.data %>></img>
     <% end %>
+    <h5><%= @prompt.submitter %></h5>
+    </div>
     """
   end
 end

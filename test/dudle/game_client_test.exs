@@ -103,7 +103,6 @@ defmodule Dudle.GameClientTest do
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
-    assert :ok = GameClient.advance_review_state(pid, first_player)
     assert {:error, _} = GameClient.advance_review_state(pid, first_player)
   end
 
@@ -138,7 +137,6 @@ defmodule Dudle.GameClientTest do
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
-    assert :ok = GameClient.advance_review_state(pid, first_player)
     assert {:error, _} = GameClient.advance_review_state(pid, first_player)
 
     assert {:error, _} = GameClient.submit_correct(pid, "not in the game", true)
@@ -148,7 +146,6 @@ defmodule Dudle.GameClientTest do
     assert {:error, _} = GameClient.submit_vote(pid, first_player, second_player)
 
     assert {:error, _} = GameClient.advance_review_state(pid, first_player)
-    assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
@@ -179,10 +176,8 @@ defmodule Dudle.GameClientTest do
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
-    assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.submit_correct(pid, first_player, true)
     assert :ok = GameClient.submit_vote(pid, first_player, second_player)
-    assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
@@ -208,10 +203,8 @@ defmodule Dudle.GameClientTest do
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.advance_review_state(pid, first_player)
-    assert :ok = GameClient.advance_review_state(pid, first_player)
     assert :ok = GameClient.submit_correct(pid, first_player, true)
     assert :ok = GameClient.submit_vote(pid, first_player, second_player)
-    assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)
     assert :ok = GameClient.advance_review_state(pid, second_player)

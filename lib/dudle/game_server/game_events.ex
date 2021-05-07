@@ -286,7 +286,7 @@ defmodule Dudle.GameServer.Events do
         {:keep_state_and_data,
          [{:reply, from, {:error, "You are not the current reviewing player"}}]}
 
-      element >= n_prompts ->
+      element >= (n_prompts - 1) ->
         {:next_state, {:correct, {player, first_and_last_text_prompts(round.prompts[player])}},
          data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
 
