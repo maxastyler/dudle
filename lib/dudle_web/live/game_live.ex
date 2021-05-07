@@ -13,9 +13,6 @@ defmodule DudleWeb.GameLive do
   end
 
   defp assign_state(socket, {:review, {{_, element}, prompt}} = state) do
-    IO.puts("\n\n\nRESETTING STATE\n\n\n")
-    IO.inspect(element == 0)
-
     assign(socket, state: state)
     |> update(:review_prompts, &[{element, prompt} | &1])
   end
