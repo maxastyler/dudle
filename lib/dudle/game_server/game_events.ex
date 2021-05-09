@@ -5,6 +5,9 @@ defmodule Dudle.GameServer.Events do
   alias DudleWeb.Endpoint
   alias Dudle.{Presence, Game, Prompt, Round, Options, GameServer}
 
+  defp bc_state, do: {:next_event, :internal, :broadcast_state}
+  defp bc_players, do: {:next_event, :internal, :broadcast_players}
+
   @doc """
   Get a MapSet of the presence players in the room
   """
@@ -29,7 +32,12 @@ defmodule Dudle.GameServer.Events do
         } = _data
       ) do
     Enum.map(players, fn p ->
-      {p, %{online: p in presence_players, submitted: p in Map.keys(turn_submissions), score: scores[p]}}
+      {p,
+       %{
+         online: p in presence_players,
+         submitted: p in Map.keys(turn_submissions),
+         score: scores[p]
+       }}
     end)
     |> Map.new()
   end
@@ -286,7 +294,7 @@ defmodule Dudle.GameServer.Events do
         {:keep_state_and_data,
          [{:reply, from, {:error, "You are not the current reviewing player"}}]}
 
-      element >= (n_prompts - 1) ->
+      element >= n_prompts - 1 ->
         {:next_state, {:correct, {player, first_and_last_text_prompts(round.prompts[player])}},
          data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
 
