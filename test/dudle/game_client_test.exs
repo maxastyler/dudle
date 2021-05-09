@@ -1,7 +1,7 @@
 defmodule Dudle.GameClientTest do
   use ExUnit.Case
 
-  alias Dudle.{GameClient, GameServer, Game, Prompt, Round}
+  alias Dudle.{GameClient, GameServer, Game, Prompt}
 
   setup do
     room = "test_room"

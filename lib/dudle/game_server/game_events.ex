@@ -73,17 +73,7 @@ defmodule Dudle.GameServer.Events do
     :keep_state_and_data
   end
 
-  def broadcast_state(:lobby, %{room: room} = _data) do
-    Endpoint.broadcast("game:#{room}", "broadcast_state", :lobby)
-    :keep_state_and_data
-  end
-
-  def broadcast_state(:submit, %{room: room} = _data) do
-    Endpoint.broadcast("game:#{room}", "broadcast_state", :state_updated)
-    :keep_state_and_data
-  end
-
-  defp format_review_state({:review, {player, element} = inner} = _state, %{room: room} = data) do
+  defp format_review_state({:review, {player, element} = inner} = _state, %{room: _room} = data) do
     {:review,
      {inner,
       get_in(data, [
@@ -97,7 +87,17 @@ defmodule Dudle.GameServer.Events do
       ])}}
   end
 
-  def broadcast_state({:review, {player, element}} = state, %{room: room} = data) do
+  def broadcast_state(:lobby, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", :lobby)
+    :keep_state_and_data
+  end
+
+  def broadcast_state(:submit, %{room: room} = _data) do
+    Endpoint.broadcast("game:#{room}", "broadcast_state", :state_updated)
+    :keep_state_and_data
+  end
+
+  def broadcast_state({:review, {_player, _element}} = state, %{room: room} = data) do
     Endpoint.broadcast("game:#{room}", "broadcast_state", format_review_state(state, data))
     :keep_state_and_data
   end
@@ -112,7 +112,7 @@ defmodule Dudle.GameServer.Events do
     :keep_state_and_data
   end
 
-  def broadcast_state(:end, %{room: room, game: %{scores: scores}} = data) do
+  def broadcast_state(:end, %{room: room, game: %{scores: scores}} = _data) do
     Endpoint.broadcast("game:#{room}", "broadcast_state", {:end, scores})
     :keep_state_and_data
   end
@@ -125,7 +125,7 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, :lobby}]}
   end
 
-  def get_state(from, :submit, %{game: %{player_prompts: player_prompts}} = data, player) do
+  def get_state(from, :submit, %{game: %{player_prompts: player_prompts}} = _data, player) do
     {:keep_state_and_data, [{:reply, from, {:submit, player_prompts[player]}}]}
   end
 
@@ -133,11 +133,11 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, format_review_state(state, data)}]}
   end
 
-  def get_state(from, {:vote, _} = state, data, _player) do
+  def get_state(from, {:vote, _} = state, _data, _player) do
     {:keep_state_and_data, [{:reply, from, state}]}
   end
 
-  def get_state(from, {:correct, _} = state, data, _player) do
+  def get_state(from, {:correct, _} = state, _data, _player) do
     {:keep_state_and_data, [{:reply, from, state}]}
   end
 
@@ -145,7 +145,7 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, {:end, scores}}]}
   end
 
-  def join_game(from, state, %{presence_players: players} = data, player) do
+  def join_game(from, _state, %{presence_players: players} = data, player) do
     cond do
       player in players ->
         {:keep_state_and_data,
@@ -177,11 +177,7 @@ defmodule Dudle.GameServer.Events do
       new_data = %{data | game: game}
 
       {:next_state, :submit, new_data,
-       [
-         {:reply, from, {:ok, :game_started}},
-         {:next_event, :internal, :broadcast_state},
-         {:next_event, :internal, :broadcast_players}
-       ]}
+       [{:reply, from, {:ok, :game_started}}, bc_state(), bc_players()]}
     else
       {:error, e} -> {:keep_state_and_data, [{:reply, from, {:error, e}}]}
     end
@@ -218,7 +214,7 @@ defmodule Dudle.GameServer.Events do
              [{:reply, from, :ok}, {:next_event, :internal, :add_submissions_to_round}]
 
            :else ->
-             [{:reply, from, :ok}, {:next_event, :internal, :broadcast_players}]
+             [{:reply, from, :ok}, bc_players()]
          end}
     end
   end
@@ -252,15 +248,10 @@ defmodule Dudle.GameServer.Events do
      cond do
        new_round_submissions |> Enum.map(fn {_, p} -> length(p) end) |> Enum.min() >
            map_size(new_round_submissions) ->
-         [
-           {:next_event, :internal, :move_to_reviewing_state}
-         ]
+         [{:next_event, :internal, :move_to_reviewing_state}]
 
        :else ->
-         [
-           {:next_event, :internal, :broadcast_players},
-           {:next_event, :internal, :broadcast_state}
-         ]
+         [bc_players(), bc_state()]
      end}
   end
 
@@ -273,8 +264,7 @@ defmodule Dudle.GameServer.Events do
       update_in(data, [:game], &Game.put_submissions_into_rounds/1)
       |> put_in([:players_left], reviewing_players)
 
-    {:next_state, {:review, {first_player, 0}}, new_data,
-     [{:next_event, :internal, :broadcast_state}, {:next_event, :internal, :broadcast_players}]}
+    {:next_state, {:review, {first_player, 0}}, new_data, [bc_state(), bc_players()]}
   end
 
   def move_to_reviewing_state(_state, _data), do: :keep_state_and_data
@@ -296,11 +286,10 @@ defmodule Dudle.GameServer.Events do
 
       element >= n_prompts - 1 ->
         {:next_state, {:correct, {player, first_and_last_text_prompts(round.prompts[player])}},
-         data, [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
+         data, [{:reply, from, :ok}, bc_state()]}
 
       :else ->
-        {:next_state, {:review, {player, element + 1}}, data,
-         [{:reply, from, :ok}, {:next_event, :internal, :broadcast_state}]}
+        {:next_state, {:review, {player, element + 1}}, data, [{:reply, from, :ok}, bc_state()]}
     end
   end
 
@@ -344,11 +333,7 @@ defmodule Dudle.GameServer.Events do
           |> add_to_player_score(submitter, if(correct, do: 3, else: 0))
 
         {:next_state, {:vote, {player, other_players}}, new_data,
-         [
-           {:reply, from, :ok},
-           {:next_event, :internal, :broadcast_state},
-           {:next_event, :internal, :broadcast_players}
-         ]}
+         [{:reply, from, :ok}, bc_state(), bc_players()]}
     end
   end
 
@@ -362,11 +347,7 @@ defmodule Dudle.GameServer.Events do
     num_rounds = length(game.rounds)
     round_limit_reached = game.options.max_rounds != nil and num_rounds >= game.options.max_rounds
 
-    reply = [
-      {:reply, from, :ok},
-      {:next_event, :internal, :broadcast_state},
-      {:next_event, :internal, :broadcast_players}
-    ]
+    reply = [{:reply, from, :ok}, bc_state(), bc_players()]
 
     if max_score_reached or round_limit_reached do
       {:next_state, :end, data, reply}
@@ -402,11 +383,7 @@ defmodule Dudle.GameServer.Events do
 
           [p | ps] ->
             {:next_state, {:review, {p, 0}}, new_data |> put_in([:players_left], ps),
-             [
-               {:reply, from, :ok},
-               {:next_event, :internal, :broadcast_state},
-               {:next_event, :internal, :broadcast_players}
-             ]}
+             [{:reply, from, :ok}, bc_state(), bc_players()]}
         end
     end
   end
@@ -415,12 +392,12 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, {:error, "Cannot submit a vote at the moment"}}]}
   end
 
-  def set_score_limit(from, state, data, limit) when is_number(limit) do
+  def set_score_limit(from, _state, data, limit) when is_number(limit) do
     {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_score()], limit),
      [{:reply, from, {:ok, limit}}]}
   end
 
-  def set_round_limit(from, state, data, limit) when is_number(limit) do
+  def set_round_limit(from, _state, data, limit) when is_number(limit) do
     {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_rounds()], limit),
      [{:reply, from, {:ok, limit}}]}
   end

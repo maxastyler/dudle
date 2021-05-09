@@ -6,7 +6,7 @@ defmodule Dudle.GameServer do
   """
   use GenStateMachine
 
-  alias Dudle.{Presence, Game, Options}
+  alias Dudle.{Game, Options}
   import Dudle.GameServer.Events
 
   @server_timeout 10 * 60 * 1000
