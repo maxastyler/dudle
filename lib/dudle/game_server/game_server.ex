@@ -1,4 +1,9 @@
 defmodule Dudle.GameServer do
+  @moduledoc """
+  This is an implementation of a game server for playing Dudle.
+  
+  The game accepts the 
+  """
   use GenStateMachine
 
   alias Dudle.{Presence, Game, Options}

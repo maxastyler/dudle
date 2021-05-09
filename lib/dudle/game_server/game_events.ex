@@ -382,9 +382,10 @@ defmodule Dudle.GameServer.Events do
          [{:reply, from, {:error, "The voted for player is not in the available players"}}]}
 
       :else ->
+        IO.inspect(vote)
         new_data =
           put_in_results(data, player, :favourite, vote)
-          |> add_to_player_score(submitter, 1)
+          |> add_to_player_score(vote, 1)
 
         players_left = new_data.players_left
 

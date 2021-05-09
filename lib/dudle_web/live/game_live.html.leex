@@ -1,6 +1,10 @@
 <%= if (assigns[:connected] == true) and connected?(@socket) do %>
-    <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players %>
-    <%= case @state do %>
+    <section class="row">
+        <article class="column">
+            <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players %>
+        </article>
+        <article class="column column-75">
+            <%= case @state do %>
         <%= :lobby -> %> <%= live_component @socket, DudleWeb.LobbyComponent, id: :lobby%>
 
         <%= {:end, scores} -> %> <%= live_component @socket, DudleWeb.EndComponent, id: :end, scores: scores %>
@@ -12,15 +16,17 @@
                 <p>Players submitting... please wait</p>
             <% end %>
 
-        <%= _ ->  %> <%= live_component @socket, DudleWeb.ReviewComponent, id: :review, review_prompts: @review_prompts, name: @name, state: @state %>
-                         <%= case @state do %>
-                             <%= {:correct, {player, {first_prompt, last_prompt}}} -> %>
-                                 <%= live_component @socket, DudleWeb.CorrectComponent, id: :correct, first_prompt: first_prompt, last_prompt: last_prompt, is_main_player: player == @name %>
-                                 <%= {:vote, {player, votees}} -> %>
-                                     <%= live_component @socket, DudleWeb.VoteComponent, id: :vote, votees: votees, is_main_player: player == @name, player: player %>
-                             <%= _ ->  %>
-                <% end %>
-    <% end %>
+            <%= _ ->  %> <%= case @state do %>
+                <%= {:correct, {player, {first_prompt, last_prompt}}} -> %>
+                    <%= live_component @socket, DudleWeb.CorrectComponent, id: :correct, first_prompt: first_prompt, last_prompt: last_prompt, is_main_player: player == @name %>
+                    <%= {:vote, {player, votees}} -> %>
+                        <%= live_component @socket, DudleWeb.VoteComponent, id: :vote, votees: votees, is_main_player: player == @name, player: player %>
+                        <%= _ ->  %>
+                        <% end %>
+                        <%= live_component @socket, DudleWeb.ReviewComponent, id: :review, review_prompts: @review_prompts, name: @name, state: @state %>
+                    <% end %>
+        </article>
+    </section>
 <% else %>
 <%= live_component @socket, DudleWeb.LoginComponent, room: @room, name: @name %>
 <% end %>

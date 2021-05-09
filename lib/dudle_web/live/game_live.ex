@@ -90,8 +90,11 @@ defmodule DudleWeb.GameLive do
   end
 
   def handle_event("start_game", _, socket) do
-    GameClient.start_game(via(socket.assigns.room))
-    {:noreply, socket}
+    with {:ok, _} <- GameClient.start_game(via(socket.assigns.room)) do
+      {:noreply, socket}
+    else
+      {:error, e} -> {:noreply, put_flash(socket, :error, e)}
+    end
   end
 
   def handle_event("handle_text_data", %{"prompt_text" => prompt_text}, socket) do

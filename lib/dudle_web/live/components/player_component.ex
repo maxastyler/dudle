@@ -4,14 +4,15 @@ defmodule DudleWeb.PlayerComponent do
   @impl true
   def render(assigns) do
     ~L"""
-    <%= @id %>
-    Online: <%= @data[:online] %>
+    <div class="card <%= if @data[:online], do: "", else: "offline"%>">
+    <h4><%= @id %></h4>
     <%= if @data[:score] do %>
-    Score: <%= @data[:score] %>
+    <small>Score: <%= @data[:score] %></small>
     <% end %>
     <%= if Map.has_key?(@data, :submitted) do %>
-    Submitted: <%= @data[:submitted] %>
+    <small>Submitted: <%= @data[:submitted] %></small>
     <% end %>
+    </div>
     """
   end
 end

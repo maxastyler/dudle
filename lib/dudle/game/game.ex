@@ -37,10 +37,10 @@ defmodule Dudle.Game do
   def new(players, prompts, options) do
     cond do
       MapSet.size(prompts) < MapSet.size(players) ->
-        {:error, "less prompts than there are players"}
+        {:error, "Can't start game: there are less prompts than there are players"}
 
       MapSet.size(players) < 2 ->
-        {:error, "less than two players"}
+        {:error, "Can't start game: there are less than two players"}
 
       :else ->
         [h | t] = player_list = Enum.shuffle(players)
