@@ -9,7 +9,7 @@ defmodule DudleWeb.SubmitComponent do
     <h3>Draw this prompt:</h3>    
     <%= live_component @socket, DudleWeb.PromptComponent, id: :submit_prompt, prompt: @prompt %>
     <h3>Here:</h3>
-    <div id="sketchpad" phx-update="ignore" phx-hook="SketchPad"></div>
+    <div id="sketchpad" phx-update="ignore" phx-hook="SketchPad" class="button_container"></div>
     <%= :image -> %>
     <form phx-submit="handle_text_data">
     <label for="prompt_text">What does this image show?:</label>

@@ -25,7 +25,6 @@ let Hooks = {}
 Hooks.SketchPad = {
     mounted() {
         let sketch_el = document.createElement("div");
-        sketch_el.className = "sketch_outer";
         let size_div = document.createElement("div");
         size_div.className = "button_container";
         let colour_div = document.createElement("div");
@@ -40,6 +39,8 @@ Hooks.SketchPad = {
             },
             width: 500,
         });
+
+        this.pad.canvas.style.border = '1px solid #000';
 
         this.send_function = () => {this.pushEvent("handle_sketch_data",
                                                    {sketch_data: this.pad.toJSON()})};
