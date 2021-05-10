@@ -132,3 +132,9 @@ hr.solid {
 .sketch_outer {
     border-style: solid;
 }
+
+.size_container {
+    display: flex;
+    justify-content: space-around;
+    align-items: baseline;
+}

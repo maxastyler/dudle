@@ -25,6 +25,8 @@ let Hooks = {}
 Hooks.SketchPad = {
     mounted() {
         let sketch_el = document.createElement("div");
+        let outer_size_div = document.createElement("div");
+        outer_size_div.className = "size_container";
         let size_div = document.createElement("div");
         size_div.className = "button_container";
         let colour_div = document.createElement("div");
@@ -76,7 +78,13 @@ Hooks.SketchPad = {
             colour_div.appendChild(button);
         }
 
-        this.el.appendChild(size_div);
+        let size_label = document.createElement("p");
+        let size_label_text = document.createTextNode("Pen size:  ");
+        size_label.appendChild(size_label_text);
+        outer_size_div.appendChild(size_label);
+        outer_size_div.appendChild(size_div);
+        
+        this.el.appendChild(outer_size_div);
         this.el.appendChild(colour_div);
         this.el.appendChild(control_div);
         this.el.appendChild(sketch_el);
