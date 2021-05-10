@@ -19,7 +19,7 @@ import {LiveSocket} from "phoenix_live_view"
 import * as rs from "responsive-sketchpad"
 
 const pen_sizes = [2, 10, 20];
-const pen_colours = ["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF"];
+const pen_colours = ["#000000", "#FFFFFF", "#FF0000", "#00FF00", "#0000FF", "#FFC0CB", "#964B00", "#FFFF00"];
 
 let Hooks = {}
 Hooks.SketchPad = {
@@ -27,6 +27,7 @@ Hooks.SketchPad = {
         let sketch_el = document.createElement("div");
         let size_div = document.createElement("div");
         let colour_div = document.createElement("div");
+        colour_div.className = "colour_container";
         let control_div = document.createElement("div");
 
         this.pad = new rs(sketch_el, {

@@ -24,8 +24,6 @@ defmodule Dudle.GameSweeper do
 
   @impl true
   def handle_info(:sweep, state) do
-    IO.puts("Sweeping")
-
     for c <- DynamicSupervisor.which_children(Dudle.GameSupervisor) do
       case c do
         {_, :restarting, _, _} ->

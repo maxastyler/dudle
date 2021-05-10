@@ -75,6 +75,7 @@ defmodule Dudle.GameClient do
     for {pid, _} <- Registry.lookup(Dudle.GameRegistry, room) do
       DynamicSupervisor.terminate_child(Dudle.GameSupervisor, pid)
     end
+
     start_server(room)
   end
 end
