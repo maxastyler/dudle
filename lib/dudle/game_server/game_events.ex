@@ -151,6 +151,10 @@ defmodule Dudle.GameServer.Events do
     {:keep_state_and_data, [{:reply, from, {:end, scores}}]}
   end
 
+  def get_room_name(from, %{room: room} = _data) do
+    {:keep_state_and_data, [{:reply, from, room}]}
+  end
+
   def join_game(from, _state, %{presence_players: players} = data, player) do
     cond do
       player in players ->

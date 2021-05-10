@@ -10,6 +10,7 @@ defmodule Dudle.Application do
       # start the game server registry and supervisor
       {Registry, keys: :unique, name: Dudle.GameRegistry},
       {DynamicSupervisor, strategy: :one_for_one, name: Dudle.GameSupervisor},
+      Dudle.GameSweeper,
       # Start the Ecto repository
       Dudle.Repo,
       # Start the Telemetry supervisor

@@ -6,7 +6,7 @@ defmodule Dudle.GameServer do
   """
   use GenStateMachine
 
-  alias Dudle.{Game, Options}
+  alias Dudle.Game
   import Dudle.GameServer.Events
 
   @server_timeout 10 * 60 * 1000
@@ -62,6 +62,10 @@ defmodule Dudle.GameServer do
 
   def handle_event(:internal, :broadcast_all, state, data) do
     broadcast_all(state, data)
+  end
+
+  def handle_event({:call, from}, :get_room_name, _state, data) do
+    get_room_name(from, data)
   end
 
   def handle_event({:call, from}, {:get_state, player}, state, data) do
