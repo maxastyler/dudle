@@ -4,7 +4,7 @@ defmodule DudleWeb.EndComponent do
   def render(assigns) do
     ~L"""
     You've finished the game!
-    <button phx-click="start_game">Restart?</button>
+    <button phx-click="reset_game">Restart?</button>
     """
   end
 end

@@ -66,4 +66,11 @@ defmodule Dudle.GameClient do
   def submit_vote(server, player, vote) do
     GenStateMachine.call(server, {:submit_vote, player, vote})
   end
+
+  def reset_game(room) do
+    for {pid, _} <- Registry.lookup(Dudle.GameRegistry, room) do
+      DynamicSupervisor.terminate_child(Dudle.GameSupervisor, pid)
+    end
+    start_server(room)
+  end
 end

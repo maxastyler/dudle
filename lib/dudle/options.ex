@@ -14,12 +14,13 @@ defmodule Dudle.Options do
   end
 
   def validate_options_from_web(max_score, max_rounds) do
+    max_score = if is_binary(max_score), do: String.to_integer(max_score), else: max_score
+    max_rounds = if is_binary(max_rounds), do: String.to_integer(max_rounds), else: max_rounds
     score_oob = max_score < 1 or max_score > max_score_limit()
     rounds_oob = max_rounds < 1 or max_rounds > max_rounds_limit()
-
     cond do
       score_oob and rounds_oob ->
-        {:error, "At least one of max score and max rounds should be valid"}
+        {:error, "At least one of max score and max rounds should be set"}
 
       score_oob ->
         {:ok, %__MODULE__{max_score: nil, max_rounds: max_rounds}}

@@ -87,6 +87,12 @@ defmodule Dudle.GameServer.Events do
       ])}}
   end
 
+  def broadcast_all(state, data) do
+    broadcast_state(state, data)
+    broadcast_players(state, data)
+    :keep_state_and_data
+  end
+
   def broadcast_state(:lobby, %{room: room} = _data) do
     Endpoint.broadcast("game:#{room}", "broadcast_state", :lobby)
     :keep_state_and_data

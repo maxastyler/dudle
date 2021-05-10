@@ -34,7 +34,7 @@ defmodule Dudle.GameServer do
        presence_players: players,
        game: nil,
        prompts: Game.Prompts.prompts(),
-     }, [{:timeout, @server_timeout, :any}]}
+     }, [{:timeout, @server_timeout, :any}, {:next_event, :internal, :broadcast_all}]}
   end
 
   @impl true
@@ -58,6 +58,10 @@ defmodule Dudle.GameServer do
 
   def handle_event(:internal, :move_to_reviewing_state, state, data) do
     move_to_reviewing_state(state, data)
+  end
+
+  def handle_event(:internal, :broadcast_all, state, data) do
+    broadcast_all(state, data)
   end
 
   def handle_event({:call, from}, {:get_state, player}, state, data) do

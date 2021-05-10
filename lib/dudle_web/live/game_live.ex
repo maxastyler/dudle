@@ -39,7 +39,8 @@ defmodule DudleWeb.GameLive do
              via(socket.assigns.room),
              Prompt.new(prompt_type, socket.assigns.name, prompt_data)
            ) do
-      put_flash(socket, :info, "submitted")
+      socket
+      # put_flash(socket, :info, "submitted")
     else
       {:error, e} -> put_flash(socket, :error, e)
     end
@@ -118,6 +119,11 @@ defmodule DudleWeb.GameLive do
 
   def handle_event("submit_vote", %{"name" => value}, socket) do
     GameClient.submit_vote(via(socket.assigns.room), socket.assigns.name, value)
+    {:noreply, socket}
+  end
+
+  def handle_event("reset_game", _, socket) do
+    GameClient.reset_game(socket.assigns.room)
     {:noreply, socket}
   end
 end
