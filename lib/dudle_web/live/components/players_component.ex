@@ -3,7 +3,7 @@ defmodule DudleWeb.PlayersComponent do
 
   def render(assigns) do
     ~L"""
-    <small>Players:</small>
+    <h4>Players in room <b><%= @room %></b>:</h4>
     <%= for {player, data} <- Enum.sort(@players) do %>
     <%= live_component @socket, DudleWeb.PlayerComponent, id: player, data: data%>
     <hr class="solid">

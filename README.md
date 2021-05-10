@@ -14,6 +14,7 @@ Ready to run in production? Please [check our deployment guides](https://hexdocs
 ## Running in production
 To set up on the server: 
 - Clone this repository
+- On the production machine go into assets and run: `npm install` and then `npm run deploy` (dunno why lol)
 - Get your ssl keys, (whatever.crt, server.key) and set the environment variables:
   `DUDLE_SSL_KEY_PATH=/wherever/server.key` and `DUDLE_SSL_CERT_PATH=/wherever/whatever.crt`
 - Set up your database, and export the environment variable:

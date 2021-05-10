@@ -1,7 +1,7 @@
 <%= if (assigns[:connected] == true) and connected?(@socket) do %>
     <section class="row">
         <article class="column">
-            <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players %>
+            <%= live_component @socket, DudleWeb.PlayersComponent, id: :players, players: @players, room: @room %>
         </article>
         <article class="column column-75">
             <%= case @state do %>
