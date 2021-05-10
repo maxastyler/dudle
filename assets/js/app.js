@@ -25,10 +25,13 @@ let Hooks = {}
 Hooks.SketchPad = {
     mounted() {
         let sketch_el = document.createElement("div");
+        sketch_el.className = "sketch_outer";
         let size_div = document.createElement("div");
+        size_div.className = "button_container";
         let colour_div = document.createElement("div");
-        colour_div.className = "colour_container";
+        colour_div.className = "button_container";
         let control_div = document.createElement("div");
+        control_div.className = "button_container";
 
         this.pad = new rs(sketch_el, {
             line: {

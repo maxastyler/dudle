@@ -3,7 +3,8 @@ defmodule DudleWeb.ReviewComponent do
 
   def render(assigns) do
     ~L"""
-    Reviewing
+    <div>
+    <h4>Reviewing the round:</h4>
     <%= if elem(@state, 0) == :review and get_in(@state, [Access.elem(1), Access.elem(0), Access.elem(0)]) == @name do %>
     <button phx-click="advance_review_state">Next prompt</button>
     <% end %>
@@ -11,6 +12,7 @@ defmodule DudleWeb.ReviewComponent do
     <%= for prompt_tuple <- @review_prompts do %>
     <%= live_component @socket, DudleWeb.PromptComponent, id: elem(prompt_tuple, 0), prompt: elem(prompt_tuple, 1) %>
     <% end %>
+    </div>
     </div>
     """
   end
