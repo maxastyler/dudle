@@ -31,8 +31,8 @@ defmodule Dudle.GameClient do
     end
   end
 
-  def start_game(server) do
-    GenStateMachine.call(server, :start_game)
+  def start_game(server, options) do
+    GenStateMachine.call(server, {:start_game, options})
   end
 
   @doc """
@@ -65,13 +65,5 @@ defmodule Dudle.GameClient do
 
   def submit_vote(server, player, vote) do
     GenStateMachine.call(server, {:submit_vote, player, vote})
-  end
-
-  def set_score_limit(server, limit) do
-    GenStateMachine.call(server, {:set_score_limit, limit})
-  end
-
-  def set_round_limit(server, limit) do
-    GenStateMachine.call(server, {:set_round_limit, limit})
   end
 end

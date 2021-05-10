@@ -6,7 +6,7 @@ defmodule DudleWeb.GameLive do
   use DudleWeb, :live_view
   alias Dudle.GameClient
   alias DudleWeb.Endpoint
-  alias Dudle.{Presence, Prompt}
+  alias Dudle.{Presence, Prompt, Options}
 
   defp via(room) do
     {:via, Registry, {Dudle.GameRegistry, room}}
@@ -89,8 +89,9 @@ defmodule DudleWeb.GameLive do
      push_redirect(socket, to: Routes.game_path(socket, :index, room: room, name: name))}
   end
 
-  def handle_event("start_game", _, socket) do
-    with {:ok, _} <- GameClient.start_game(via(socket.assigns.room)) do
+  def handle_event("start_game", %{"max_score" => max_score, "max_rounds" => max_rounds}, socket) do
+    with {:ok, options} <- Options.validate_options_from_web(max_score, max_rounds),
+         {:ok, _} <- GameClient.start_game(via(socket.assigns.room), options) do
       {:noreply, socket}
     else
       {:error, e} -> {:noreply, put_flash(socket, :error, e)}

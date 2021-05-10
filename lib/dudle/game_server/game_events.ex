@@ -171,7 +171,8 @@ defmodule Dudle.GameServer.Events do
   def start_game(
         from,
         _state,
-        %{presence_players: players, prompts: prompts, options: options} = data
+        %{presence_players: players, prompts: prompts} = data,
+        options
       ) do
     with {:ok, game} <- Game.new(players, prompts, options) do
       new_data = %{data | game: game}
@@ -390,15 +391,5 @@ defmodule Dudle.GameServer.Events do
 
   def submit_vote(from, _, _, _, _) do
     {:keep_state_and_data, [{:reply, from, {:error, "Cannot submit a vote at the moment"}}]}
-  end
-
-  def set_score_limit(from, _state, data, limit) when is_number(limit) do
-    {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_score()], limit),
-     [{:reply, from, {:ok, limit}}]}
-  end
-
-  def set_round_limit(from, _state, data, limit) when is_number(limit) do
-    {:keep_state, put_in(data, [Lens.key(:options) |> Options.max_rounds()], limit),
-     [{:reply, from, {:ok, limit}}]}
   end
 end

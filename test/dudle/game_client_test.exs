@@ -1,7 +1,7 @@
 defmodule Dudle.GameClientTest do
   use ExUnit.Case
 
-  alias Dudle.{GameClient, GameServer, Game, Prompt}
+  alias Dudle.{GameClient, GameServer, Game, Prompt, Options}
 
   setup do
     room = "test_room"
@@ -52,7 +52,7 @@ defmodule Dudle.GameClientTest do
   test "game doesn't start with less than two players", %{pid: pid, player_1: player_1} do
     Agent.stop(player_1)
     Process.sleep(200)
-    assert {:error, _} = GameClient.start_game(pid)
+    assert {:error, _} = GameClient.start_game(pid, Options.default())
   end
 
   test "can't submit when game hasn't started", %{pid: pid} do
@@ -64,7 +64,7 @@ defmodule Dudle.GameClientTest do
     assert :lobby = GameClient.get_state(pid, "player_1")
     initial_map = Enum.map(["player_1", "player_2"], &{&1, %{online: true}}) |> Map.new()
     assert initial_map == GameClient.get_players(pid)
-    assert {:ok, :game_started} = GameClient.start_game(pid)
+    assert {:ok, :game_started} = GameClient.start_game(pid, %Options{max_rounds: nil, max_score: nil})
     assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
     assert_receive %{event: "broadcast_state", payload: :state_updated}, 300
 
@@ -109,7 +109,7 @@ defmodule Dudle.GameClientTest do
   test "valid game can be played", %{pid: pid, room: room} do
     DudleWeb.Endpoint.subscribe("game:#{room}")
     assert :lobby = GameClient.get_state(pid, "player_1")
-    assert {:ok, :game_started} = GameClient.start_game(pid)
+    assert {:ok, :game_started} = GameClient.start_game(pid, Options.default())
     assert {:submit, %{game: %Game{}}} = :sys.get_state(pid)
     assert_receive %{event: "broadcast_state", payload: :state_updated}, 300
 
@@ -158,8 +158,7 @@ defmodule Dudle.GameClientTest do
   end
 
   test "score limits work", %{pid: pid} do
-    GameClient.set_score_limit(pid, 2)
-    GameClient.start_game(pid)
+    GameClient.start_game(pid, %Options{max_score: 2, max_rounds: nil})
     prompt = Prompt.new(:text, "player_1", "im")
     assert :ok = GameClient.submit_prompt(pid, prompt)
     prompt = Prompt.new(:text, "player_2", "")
@@ -187,8 +186,7 @@ defmodule Dudle.GameClientTest do
   end
 
   test "round limits work", %{pid: pid} do
-    GameClient.set_round_limit(pid, 1)
-    GameClient.start_game(pid)
+    GameClient.start_game(pid, %Options{max_rounds: 1, max_score: nil})
     prompt = Prompt.new(:text, "player_1", "im")
     assert :ok = GameClient.submit_prompt(pid, prompt)
     prompt = Prompt.new(:text, "player_2", "im")

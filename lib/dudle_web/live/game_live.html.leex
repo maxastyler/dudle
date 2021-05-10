@@ -17,9 +17,9 @@
             <% end %>
 
             <%= _ ->  %> <%= case @state do %>
-                <%= {:correct, {player, {first_prompt, last_prompt}}} -> %>
+                <% {:correct, {player, {first_prompt, last_prompt}}} -> %>
                     <%= live_component @socket, DudleWeb.CorrectComponent, id: :correct, first_prompt: first_prompt, last_prompt: last_prompt, is_main_player: player == @name %>
-                    <%= {:vote, {player, votees}} -> %>
+                    <% {:vote, {player, votees}} -> %>
                         <%= live_component @socket, DudleWeb.VoteComponent, id: :vote, votees: votees, is_main_player: player == @name, player: player %>
                         <%= _ ->  %>
                         <% end %>

@@ -34,7 +34,6 @@ defmodule Dudle.GameServer do
        presence_players: players,
        game: nil,
        prompts: Game.Prompts.prompts(),
-       options: %Options{}
      }, [{:timeout, @server_timeout, :any}]}
   end
 
@@ -73,8 +72,8 @@ defmodule Dudle.GameServer do
     join_game(from, state, data, player)
   end
 
-  def handle_event({:call, from}, :start_game, state, data) do
-    start_game(from, state, data)
+  def handle_event({:call, from}, {:start_game, options}, state, data) do
+    start_game(from, state, data, options)
   end
 
   def handle_event({:call, from}, {:submit_prompt, prompt}, state, data) do
@@ -91,13 +90,5 @@ defmodule Dudle.GameServer do
 
   def handle_event({:call, from}, {:submit_vote, player, vote}, state, data) do
     submit_vote(from, state, data, player, vote)
-  end
-
-  def handle_event({:call, from}, {:set_score_limit, limit}, state, data) do
-    set_score_limit(from, state, data, limit)
-  end
-
-  def handle_event({:call, from}, {:set_round_limit, limit}, state, data) do
-    set_round_limit(from, state, data, limit)
   end
 end

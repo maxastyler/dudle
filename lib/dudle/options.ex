@@ -31,4 +31,8 @@ defmodule Dudle.Options do
         {:ok, %__MODULE__{max_score: max_score, max_rounds: max_rounds}}
     end
   end
+
+  def default() do
+    %__MODULE__{max_score: nil, max_rounds: nil}
+  end
 end
