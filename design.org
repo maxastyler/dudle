@@ -1,3 +1,4 @@
+This doc's a little out of date with the actual structure of the program... The states are correct though
 * states
   - :lobby
   - :submit
