@@ -10,8 +10,15 @@ use Mix.Config
 # which you should run after static files are built and
 # before starting your production server.
 config :dudle, DudleWeb.Endpoint,
-  url: [host: "example.com", port: 80],
-  cache_static_manifest: "priv/static/cache_manifest.json"
+  url: [host: "dudle.app"],
+  cache_static_manifest: "priv/static/cache_manifest.json",
+  https: [
+    port: 443,
+    cipher_suite: :strong,
+    keyfile: System.get_env("DUDLE_SSL_KEY_PATH"),
+    certfile: System.get_env("DUDLE_SSL_CERT_PATH"),
+    transport_options: [socket_opts: [:inet6]]
+  ]
 
 # Do not print debug messages in production
 config :logger, level: :info
