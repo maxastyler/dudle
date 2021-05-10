@@ -1,15 +1,13 @@
 defmodule Dudle.GameServer do
   @moduledoc """
   This is an implementation of a game server for playing Dudle.
-  
+
   The game accepts the 
   """
   use GenStateMachine
 
   alias Dudle.Game
   import Dudle.GameServer.Events
-
-  @server_timeout 10 * 60 * 1000
 
   def player_name_limit, do: 50
 
@@ -33,8 +31,8 @@ defmodule Dudle.GameServer do
        room: room,
        presence_players: players,
        game: nil,
-       prompts: Game.Prompts.prompts(),
-     }, [{:timeout, @server_timeout, :any}, {:next_event, :internal, :broadcast_all}]}
+       prompts: Game.Prompts.prompts()
+     }, [{:next_event, :internal, :broadcast_all}]}
   end
 
   @impl true
