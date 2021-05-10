@@ -6,7 +6,7 @@ defmodule Dudle.GameSweeper do
   use GenServer
   alias Dudle.GameClient
 
-  @sweep_timeout 5 * 60 * 1000
+  @sweep_timeout 2 * 60 * 1000
 
   def start_link(options) do
     GenServer.start_link(__MODULE__, %{}, options)
