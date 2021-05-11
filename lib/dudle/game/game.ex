@@ -81,7 +81,13 @@ defmodule Dudle.Game do
   @doc """
   Put the round submissions into the rounds list
   """
-  def put_submissions_into_rounds(%{round_submissions: round_submissions} = game) do
-    update_in(game, [rounds], &[Round.create_from_round_submissions(round_submissions) | &1])
+  def put_submissions_into_rounds(
+        %{round_submissions: round_submissions, players: players} = game
+      ) do
+    update_in(
+      game,
+      [rounds()],
+      &[Round.create_from_round_submissions(round_submissions, players) | &1]
+    )
   end
 end
